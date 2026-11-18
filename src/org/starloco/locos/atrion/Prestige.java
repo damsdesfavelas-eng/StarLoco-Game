@@ -23,6 +23,8 @@ import java.util.ArrayList;
 public final class Prestige {
 
     public static final int MAX_PRESTIGE = 3;
+    /** Sagesse gagnee a chaque niveau (la sagesse ne s'achete plus avec le capital). */
+    public static final int WISDOM_PER_LEVEL = 1;
     public static final int BASE_MAX_LEVEL = 200;
     public static final int LEVELS_PER_PRESTIGE = 20;
     /** Carte du zaap d'Astrub, seul endroit ou le reset est possible. */
@@ -66,6 +68,9 @@ public final class Prestige {
     /** Bonus permanents lies au prestige (ajoutes aux caracteristiques du personnage). */
     public static Stats bonusStats(Player player) {
         Stats stats = new Stats(false, null);
+        // Sagesse gagnee par niveau
+        if (player != null && player.getLevel() > 1)
+            stats.addOneStat(Constant.STATS_ADD_SAGE, (player.getLevel() - 1) * WISDOM_PER_LEVEL);
         int p = get(player);
         if (p <= 0) return stats;
         stats.addOneStat(Constant.STATS_ADD_VITA, BONUS_VITA[p]);

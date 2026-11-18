@@ -2433,6 +2433,12 @@ public class Player implements Scripted<SPlayer>, Actor {
     }
 
     public void boostStat(int stat, boolean capital) {
+        // Atrion : la sagesse ne s'achete plus avec le capital, elle se gagne a chaque niveau
+        if (stat == 12 && capital) {
+            this.sendMessage("La sagesse ne se monte pas : tu gagnes +" + org.starloco.locos.atrion.Prestige.WISDOM_PER_LEVEL + " sagesse a chaque niveau.");
+            SocketManager.GAME_SEND_STATS_PACKET(this);
+            return;
+        }
         int value = 0;
         switch (stat) {
             case 10://Force
@@ -2484,6 +2490,11 @@ public class Player implements Scripted<SPlayer>, Actor {
     }
 
     public void boostStatFixedCount(int stat, int countVal) {
+        if (stat == 12) { // Atrion : sagesse non achetable
+            this.sendMessage("La sagesse ne se monte pas : tu gagnes +" + org.starloco.locos.atrion.Prestige.WISDOM_PER_LEVEL + " sagesse a chaque niveau.");
+            SocketManager.GAME_SEND_STATS_PACKET(this);
+            return;
+        }
         for (int i = 0; i < countVal; i++) {
             int value = 0;
             switch (stat) {
