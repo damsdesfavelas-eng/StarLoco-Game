@@ -142,6 +142,7 @@ public class PetEntry {
     }
 
     public void looseFight(Player player) {
+        if (org.starloco.locos.atrion.Atrion.isImmortalPet(this.template)) return; // Atrion : familier immortel
         GameObject obj = World.world.getGameObject(this.objectId);
         if (obj == null)
             return;

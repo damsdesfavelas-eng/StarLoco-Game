@@ -222,7 +222,7 @@ public class Player implements Scripted<SPlayer>, Actor {
     private boolean isBlocked = false;
     //Regen hp
     private boolean sitted;
-    private int regenRate = 2000;
+    private int regenRate = 200; // Atrion : regeneration x10
     private long regenTime = -1;                                                //-1 veut dire que la personne ne c'est jamais connecte
     private boolean isInPrivateArea = false;
     public Start start;
@@ -1179,8 +1179,8 @@ public class Player implements Scripted<SPlayer>, Actor {
             regenRate = 0;
             this.send("ILF0");
         } else if(fight == null) {
-            regenRate = 1000;
-            this.send("ILS1000");
+            regenRate = 100; // Atrion
+            this.send("ILS100");
         }
         this.fight = fight;
     }
@@ -1264,7 +1264,7 @@ public class Player implements Scripted<SPlayer>, Actor {
         if (this.sitted != sitted) {
             this.refreshLife(this.sitted);
             this.sitted = sitted;
-            this.regenRate = (sitted ? 1000 : 2000);
+            this.regenRate = (sitted ? 100 : 200); // Atrion
             SocketManager.send(this, "ILS" + regenRate);
             return true;
         }
@@ -1787,6 +1787,9 @@ public class Player implements Scripted<SPlayer>, Actor {
             return;
 
         GameClient client = getAccount().getGameClient();
+
+        // Atrion : droits admin, zaaps, metiers, familier de depart
+        org.starloco.locos.atrion.Atrion.onJoinGame(this);
 
         if(Config.modeHeroic) {
             this.alignment = 0;
@@ -2373,7 +2376,7 @@ public class Player implements Scripted<SPlayer>, Actor {
         }
         if (pods < 1000)
             pods = 1000;
-        return pods + 9000;
+        return pods + 49000; // Atrion : pods augmentes
     }
 
     public void refreshLife(boolean refresh) {
@@ -2909,30 +2912,36 @@ public class Player implements Scripted<SPlayer>, Actor {
         return null;
     }
 
+    /** Atrion : premiere position de metier libre (0-2 metiers, 3-5 specialisations, puis 6+). */
+    private int atrionFreeJobPosition(boolean mage) {
+        int[] preferred = mage ? new int[]{3, 4, 5} : new int[]{0, 1, 2};
+        for (int p : preferred)
+            if (_metiers.get(p) == null) return p;
+        int p = 6;
+        while (_metiers.get(p) != null) p++;
+        return p;
+    }
+
+    /** Atrion : apprend un metier sans message ni paquet (utilise a la connexion). */
+    public void atrionLearnJobSilently(Job m) {
+        for (JobStat sm : _metiers.values())
+            if (sm != null && sm.getTemplate().getId() == m.getId()) return;
+        int pos = atrionFreeJobPosition(JobConstant.isMageJob(m.getId()));
+        _metiers.put(pos, new JobStat(pos, m, 1, 0));
+    }
+
+    /** Atrion : debloque un zaap sans message. */
+    public void atrionAddZaapSilently(int mapId) {
+        if (!_zaaps.contains(mapId)) _zaaps.add(mapId);
+    }
+
     public int learnJob(Job m) {
         for (Entry<Integer, JobStat> entry : _metiers.entrySet()) {
             if (entry.getValue().getTemplate().getId() == m.getId())//Si le joueur a d�j� le m�tier
                 return -1;
         }
-        int Msize = _metiers.size();
-        if (Msize == 6)//Si le joueur a d�j� 6 m�tiers
-            return -1;
-        int pos = 0;
-        if (JobConstant.isMageJob(m.getId())) {
-            if (_metiers.get(5) == null)
-                pos = 5;
-            if (_metiers.get(4) == null)
-                pos = 4;
-            if (_metiers.get(3) == null)
-                pos = 3;
-        } else {
-            if (_metiers.get(2) == null)
-                pos = 2;
-            if (_metiers.get(1) == null)
-                pos = 1;
-            if (_metiers.get(0) == null)
-                pos = 0;
-        }
+        // Atrion : plus de limite de 6 metiers
+        int pos = atrionFreeJobPosition(JobConstant.isMageJob(m.getId()));
 
         JobStat sm = new JobStat(pos, m, 1, 0);
         _metiers.put(pos, sm);//On apprend le m�tier lvl 1 avec 0 xp
@@ -3426,7 +3435,7 @@ public class Player implements Scripted<SPlayer>, Actor {
 
     public void refreshMapAfterFight() {
         SocketManager.send(this, "ILS" + 2000);
-        this.regenRate = 2000;
+        this.regenRate = 200; // Atrion
         this.curMap.addPlayer(this);
         if (getAccount().getGameClient() != null)
             SocketManager.GAME_SEND_STATS_PACKET(this);
@@ -3794,7 +3803,15 @@ public class Player implements Scripted<SPlayer>, Actor {
 
     public void useCraftSkill(int skillId, int ingredientsCount) {
         setAway(true);
-        setExchangeAction(new ExchangeAction<>(ExchangeAction.CRAFTING, skillId));
+        // Atrion : on reutilise le moteur de craft historique (JobAction) pour que le craft fonctionne
+        JobStat atrionJob = getMetierBySkill(skillId);
+        org.starloco.locos.job.JobAction atrionAction = atrionJob != null ? atrionJob.getJobActionBySkill(skillId) : null;
+        if (atrionAction != null && atrionAction.isCraft()) {
+            atrionAction.atrionPrepare(this, atrionJob);
+            setExchangeAction(new ExchangeAction<>(ExchangeAction.CRAFTING, atrionAction));
+        } else {
+            setExchangeAction(new ExchangeAction<>(ExchangeAction.CRAFTING, skillId));
+        }
 
         SocketManager.GAME_SEND_ECK_PACKET(this, 3, ingredientsCount + ";" + skillId);
     }

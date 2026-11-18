@@ -797,6 +797,11 @@ public abstract  class Fighter implements Comparable<Fighter>, Scripted<Object>,
         return getTotalStats().getEffect(Constant.STATS_ADD_PM);
     }
 
+    /** Atrion : prospection du combattant. */
+    public int atrionProspection() {
+        return getPros();
+    }
+
     int getPros() {
         return getTotalStats().getEffect(Constant.STATS_ADD_PROS);
     }

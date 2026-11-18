@@ -27,8 +27,8 @@ public class CommandPlayer {
     public static boolean analyse(Player player, String msg) {
         msg = msg.replace("|", "");
         if (msg.charAt(0) == '.') {
-            if(command(msg, "prestige")) { // Atrion
-                return org.starloco.locos.atrion.Prestige.handleCommand(player, msg);
+            if(org.starloco.locos.atrion.Atrion.handleCommand(player, msg)) { // Atrion
+                return true;
             } else if(command(msg, "help")) {
                 return commandHelp(player, msg);
             } else if (command(msg, "all") && msg.length() > 5) {

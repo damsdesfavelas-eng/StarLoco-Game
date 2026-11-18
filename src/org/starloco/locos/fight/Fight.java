@@ -4975,6 +4975,9 @@ public class Fight {
                                 }
                             }
                         }
+                        // Atrion : parchemins bonus
+                        if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
+                            org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon);
                         /** Drop Chasseur **/
                         if (player != null) {
                             ArrayList<Drop> temporary = new ArrayList<>(dropsMeats);

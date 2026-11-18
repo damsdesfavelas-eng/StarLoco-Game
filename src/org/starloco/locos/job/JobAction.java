@@ -83,6 +83,13 @@ public class JobAction {
         this.jobCraft = jobCraft;
     }
 
+    /** Atrion : prepare l'action de craft pour un joueur (craft sans atelier). */
+    public void atrionPrepare(Player player, JobStat jobStat) {
+        this.player = player;
+        this.SM = jobStat;
+        this.ingredients.clear();
+    }
+
     public void startCraft(Player P) {
         this.jobCraft = new JobCraft(this, P);
     }

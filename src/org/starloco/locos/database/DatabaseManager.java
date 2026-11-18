@@ -117,6 +117,7 @@ public class DatabaseManager {
         this.daos.add(new ZaapiData(this.game));
         this.daos.add(new HeroicMobsGroupsData(this.game));
         this.daos.add(new QuestProgressData(this.game));
+        this.daos.add(new org.starloco.locos.atrion.AtrionGameData(this.game)); // Atrion
         //endregion
     }
 

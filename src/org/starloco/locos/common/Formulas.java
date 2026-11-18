@@ -805,6 +805,7 @@ public class Formulas {
     }
 
     public static int getLoosEnergy(int lvl, boolean isAgression, boolean isPerco) {
+        if (true) return 0; // Atrion : pas de perte d'energie
         // TODO: add grade
         int returned = 10 * lvl;
         if (isAgression)

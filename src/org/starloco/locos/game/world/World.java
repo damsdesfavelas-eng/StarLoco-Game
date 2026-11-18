@@ -1722,6 +1722,11 @@ public class World implements Scripted<SWorld> {
             return localPercent;
         }
 
+        /** Atrion : pourcentages par grade (bestiaire). */
+        public java.util.List<Double> atrionPercents() {
+            return percents;
+        }
+
         public Drop copy(int grade) {
             Drop drop = new Drop(this.objectId, null, this.ceil, this.action, this.level, this.condition);
             if (this.percents == null) return null;

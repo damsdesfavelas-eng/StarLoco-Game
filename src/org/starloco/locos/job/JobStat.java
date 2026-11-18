@@ -60,6 +60,13 @@ public class JobStat {
         return this.position;
     }
 
+    /** Atrion : premiere competence de craft du metier (-1 si aucune). */
+    public int atrionCraftSkill() {
+        for (JobAction JA : this.posActions)
+            if (JA.isCraft()) return JA.getId();
+        return -1;
+    }
+
     public JobAction getJobActionBySkill(int skill) {
         for (JobAction JA : this.posActions)
             if (JA.getId() == skill)
