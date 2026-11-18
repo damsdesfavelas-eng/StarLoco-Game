@@ -67,6 +67,13 @@ BanditLevelExp = sumIntFactor(250, 250, MaxBanditLevel, 2)
 BanditLevelExp[1] = 0
 BanditLevelExp[50] = 1237750
 
+-- Atrion : niveaux 201 a 260 pour le systeme de prestige.
+-- Chaque niveau au-dela de 200 coute autant que le passage 198 -> 199.
+local atrionStep = PlayerLevelExp[199] - PlayerLevelExp[198]
+for lvl = 201, 260 do
+    PlayerLevelExp[lvl] = PlayerLevelExp[lvl - 1] + atrionStep
+end
+
 RegisterExpTables(
     PlayerLevelExp,
     GuildLevelExp,

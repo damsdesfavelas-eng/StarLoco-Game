@@ -5921,6 +5921,14 @@ public class GameClient {
                     return;
                 }
 
+                // Atrion : rarete maximum equipable selon le prestige
+                if (position != Constant.ITEM_POS_NO_EQUIPED && !org.starloco.locos.atrion.Prestige.canEquip(this.player, object)) {
+                    this.player.sendMessage("Cet objet est " + org.starloco.locos.atrion.Rarity.of(object).label
+                            + " : il faut un prestige plus eleve pour l'equiper (rarete max : "
+                            + org.starloco.locos.atrion.Prestige.maxEquipableRarity(this.player).label + ").");
+                    return;
+                }
+
                 //On ne peut ?quiper 2 items de panoplies identiques, ou 2 Dofus identiques
                 if (position != Constant.ITEM_POS_NO_EQUIPED && (object.getTemplate().getPanoId() != -1 || object.getTemplate().getType() == Constant.ITEM_TYPE_DOFUS) && this.player.hasEquiped(object.getTemplate().getId()))
                     return;

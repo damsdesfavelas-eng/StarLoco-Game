@@ -77,6 +77,7 @@ public class DatabaseManager {
         this.daos.add(new ObjectData(this.login));
         this.daos.add(new ObvijevanData(this.login));
         this.daos.add(new PetData(this.login));
+        this.daos.add(new org.starloco.locos.atrion.PrestigeData(this.login)); // Atrion
         //endregion
 
         //region game data

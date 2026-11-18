@@ -538,6 +538,8 @@ public class Player implements Scripted<SPlayer>, Actor {
         World.world.sendMessageToAll("client.player.onjoingame.welcome", player.getName());
 
         World.world.addPlayer(player);
+        // Atrion : panoplie de l'Aventurier Rare offerte a la creation
+        org.starloco.locos.atrion.Prestige.onCharacterCreated(player);
 
         return player;
     }
@@ -2302,9 +2304,30 @@ public class Player implements Scripted<SPlayer>, Actor {
         return total;
     }
 
+    /** Atrion : remet le personnage au niveau 1 (caracteristiques et sorts), en gardant inventaire, kamas et parchemins. */
+    public void atrionResetToLevelOne() {
+        this.getStats().addOneStat(125, -this.getStats().getEffect(125));
+        this.getStats().addOneStat(124, -this.getStats().getEffect(124));
+        this.getStats().addOneStat(118, -this.getStats().getEffect(118));
+        this.getStats().addOneStat(123, -this.getStats().getEffect(123));
+        this.getStats().addOneStat(119, -this.getStats().getEffect(119));
+        this.getStats().addOneStat(126, -this.getStats().getEffect(126));
+        this.addCapital(-this.getCapital());
+        this.setSpellPoints(0);
+        this._sorts.clear();
+        this._sorts.putAll(Constant.getStartSorts(classe));
+        this._sortsPlaces.clear();
+        this._sortsPlaces.putAll(Constant.getStartSortsPlaces(classe));
+        if (this.level >= 100)
+            this.stats.addOneStat(Constant.STATS_ADD_PA, -1);
+        this.level = 1;
+        this.exp = 0;
+        this.maxPdv = 55;
+    }
+
     public Stats getDonsStats() {
-        Stats stats = new Stats(false, null);
-        return stats;
+        // Atrion : bonus permanents du prestige
+        return org.starloco.locos.atrion.Prestige.bonusStats(this);
     }
 
     public Stats newStatsMorph() {
@@ -2741,7 +2764,7 @@ public class Player implements Scripted<SPlayer>, Actor {
 
     public boolean levelUp(boolean send, boolean addXp) {
         ExperienceTables.ExperienceTable xpTable = World.world.getExperiences().players;
-        if (this.getLevel() == xpTable.maxLevel())
+        if (this.getLevel() >= Math.min(xpTable.maxLevel(), org.starloco.locos.atrion.Prestige.maxLevel(this)))
             return false;
         this.level++;
         _capital += 5;
@@ -2765,8 +2788,12 @@ public class Player implements Scripted<SPlayer>, Actor {
 
         boolean up = false;
         this.exp += winxp;
-        while (this.getExp() >= xpTable.maxXpAt(this.level) && this.level < xpTable.maxLevel())
+        // Atrion : niveau max selon le prestige
+        int atrionMaxLevel = Math.min(xpTable.maxLevel(), org.starloco.locos.atrion.Prestige.maxLevel(this));
+        while (this.getExp() >= xpTable.maxXpAt(this.level) && this.level < atrionMaxLevel)
             up = levelUp(true, false);
+        if (this.level >= atrionMaxLevel && atrionMaxLevel < xpTable.maxLevel())
+            this.exp = Math.min(this.exp, xpTable.maxXpAt(this.level) - 1);
         if (isOnline) {
             if (up)
                 SocketManager.GAME_SEND_NEW_LVL_PACKET(getAccount().getGameClient(), this.getLevel());
