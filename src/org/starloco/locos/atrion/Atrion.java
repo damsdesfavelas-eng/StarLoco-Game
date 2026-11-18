@@ -26,9 +26,11 @@ import java.util.stream.Collectors;
  */
 public final class Atrion {
 
-    /** Familier de depart : Mini Champion (familier sans faim ni evolution), rendu immortel. */
-    public static final int STARTER_PET_TEMPLATE = 8071;
-    private static final String FLAG_PET = "pet_given";
+    /** Familier de depart : Chienchien (familier classique sans evolution), rendu immortel. */
+    public static final int STARTER_PET_TEMPLATE = 1711;
+    /** Ancien familier de depart (Mini Champion), invisible dans le client : remplace automatiquement. */
+    private static final int OLD_STARTER_PET_TEMPLATE = 8071;
+    private static final String FLAG_PET = "pet_given_v2";
 
     private Atrion() {
     }
@@ -90,6 +92,10 @@ public final class Atrion {
     private static void giveStarterPet(Player player) {
         PrestigeData data = data();
         if (data == null || data.hasFlag(player.getId(), FLAG_PET)) return;
+        // Retire l'ancien familier (Mini Champion) que le client n'affichait pas
+        for (GameObject old : new ArrayList<>(player.getItems().values()))
+            if (old != null && old.getTemplate().getId() == OLD_STARTER_PET_TEMPLATE)
+                player.removeItem(old.getGuid(), old.getQuantity(), false, true);
         ObjectTemplate template = World.world.getObjTemplate(STARTER_PET_TEMPLATE);
         if (template == null || World.world.getPets(STARTER_PET_TEMPLATE) == null) return;
         GameObject pet = template.createNewItem(1, false);
@@ -108,7 +114,7 @@ public final class Atrion {
     }
 
     public static boolean isImmortalPet(int templateId) {
-        return templateId == STARTER_PET_TEMPLATE;
+        return templateId == STARTER_PET_TEMPLATE || templateId == OLD_STARTER_PET_TEMPLATE;
     }
 
     // ------------------------------------------------------------------ Commandes

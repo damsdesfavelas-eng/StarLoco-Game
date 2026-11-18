@@ -19,7 +19,8 @@ public enum Rarity {
     MYTHIQUE(4, "Mythique", 2.0);
 
     public static final int RARITY_TXT_STAT = Constant.STATS_CHANGE_BY; // 985
-    private static final String STAR = "\u2605";
+    // « » existent en latin1 : la colonne stats de world_objects est en latin1, l'etoile ★ y serait perdue.
+    private static final String OPEN = "\u00AB", CLOSE = "\u00BB";
 
     public final int tier;
     public final String label;
@@ -37,22 +38,23 @@ public enum Rarity {
         return tier > MYTHIQUE.tier ? MYTHIQUE : NORMAL;
     }
 
-    /** Texte affiche dans l'infobulle, ex : "★ Épique ★". */
+    /** Texte affiche dans l'infobulle, ex : "« Épique »". */
     public String mark() {
-        return STAR + " " + label + " " + STAR;
+        return OPEN + " " + label + " " + CLOSE;
     }
 
-    /** Rarete d'un objet (NORMAL si aucune marque). Accepte aussi l'ancien format "Rarete X". */
+    /**
+     * Rarete d'un objet (NORMAL si aucune marque).
+     * Accepte « Rare », ★ Rare ★, ? Rare ? (etoile perdue en base latin1) et l'ancien format "Rarete Rare".
+     */
     public static Rarity of(GameObject object) {
         if (object == null) return NORMAL;
         String txt = object.getTxtStat().get(RARITY_TXT_STAT);
         if (txt == null) return NORMAL;
-        String key = normalize(txt);
-        for (Rarity r : new Rarity[]{MYTHIQUE, LEGENDAIRE, EPIQUE, RARE}) {
-            if (txt.contains(STAR) || txt.startsWith("Rarete ")) {
-                if (key.contains(normalize(r.label))) return r;
-            }
-        }
+        String key = normalize(txt).replaceAll("[^a-z ]", " ").trim().replaceAll("\\s+", " ");
+        if (key.startsWith("rarete ")) key = key.substring(7);
+        for (Rarity r : new Rarity[]{MYTHIQUE, LEGENDAIRE, EPIQUE, RARE})
+            if (key.equals(normalize(r.label))) return r;
         return NORMAL;
     }
 
