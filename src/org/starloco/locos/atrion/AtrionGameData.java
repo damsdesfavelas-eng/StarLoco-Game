@@ -14,6 +14,27 @@ import java.util.Map;
 public class AtrionGameData extends FunctionDAO<AtrionGameData> {
 
     private volatile Map<Integer, String> monsterNames;
+    private volatile Map<Integer, String> setNames;
+
+    public Map<Integer, String> setNames() {
+        if (setNames == null) {
+            synchronized (this) {
+                if (setNames == null) {
+                    Map<Integer, String> names = new HashMap<>();
+                    try {
+                        getData("SELECT ID, name FROM `itemsets`;", result -> {
+                            while (result.next())
+                                names.put(result.getInt("ID"), result.getString("name"));
+                        });
+                    } catch (SQLException e) {
+                        logger.error("Atrion: panoplies illisibles", e);
+                    }
+                    setNames = Collections.unmodifiableMap(names);
+                }
+            }
+        }
+        return setNames;
+    }
 
     public AtrionGameData(HikariDataSource dataSource) {
         super(dataSource, "monsters");

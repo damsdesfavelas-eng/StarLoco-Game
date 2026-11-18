@@ -127,6 +127,11 @@ public final class Atrion {
                 return commandDrops(player, msg.trim().substring(cmd.length()).trim());
             case ".top":
                 return commandTop(player);
+            case ".item":
+            case ".pano":
+                if (player.getGroup() == null) return false; // reserve aux admins
+                return cmd.equals(".item") ? commandFindItem(player, msg.trim().substring(cmd.length()).trim())
+                        : commandFindSet(player, msg.trim().substring(cmd.length()).trim());
             case ".craft":
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
             case ".atrion":
@@ -195,6 +200,49 @@ public final class Atrion {
             return true;
         }
         player.useCraftSkill(skill, org.starloco.locos.job.JobConstant.getTotalCaseByJobLevel(jobStat.get_lvl()));
+        return true;
+    }
+
+    /** Admin : recherche de numeros d'objets (pour la commande ITEM). */
+    private static boolean commandFindItem(Player player, String query) {
+        String q = norm(query);
+        if (q.length() < 3) {
+            player.sendMessage("Utilisation : <b>.item gelano</b> (3 lettres minimum), puis ITEM &lt;numero&gt; dans la console.");
+            return true;
+        }
+        List<ObjectTemplate> found = World.world.getObjectsTemplates().values().stream()
+                .filter(t -> norm(t.getName()).contains(q))
+                .sorted(Comparator.comparingInt(ObjectTemplate::getLevel).thenComparing(ObjectTemplate::getName))
+                .collect(Collectors.toList());
+        if (found.isEmpty()) {
+            player.sendMessage("Aucun objet ne correspond a \"" + query + "\".");
+            return true;
+        }
+        StringBuilder sb = new StringBuilder("<b>Objets</b> (" + found.size() + ") :");
+        found.stream().limit(20).forEach(t -> sb.append("<br/>").append(t.getId()).append(" - ").append(t.getName())
+                .append(" (niv. ").append(t.getLevel()).append(")"));
+        if (found.size() > 20) sb.append("<br/>... precise ta recherche.");
+        player.sendMessage(sb.toString());
+        return true;
+    }
+
+    /** Admin : recherche de numeros de panoplies (pour la commande ITEMSET). */
+    private static boolean commandFindSet(Player player, String query) {
+        String q = norm(query);
+        if (q.length() < 3) {
+            player.sendMessage("Utilisation : <b>.pano bouftou</b>, puis ITEMSET &lt;numero&gt; dans la console.");
+            return true;
+        }
+        Map<Integer, String> sets = DatabaseManager.get(AtrionGameData.class).setNames();
+        List<Map.Entry<Integer, String>> found = sets.entrySet().stream()
+                .filter(e -> norm(e.getValue()).contains(q)).sorted(Map.Entry.comparingByKey()).collect(Collectors.toList());
+        if (found.isEmpty()) {
+            player.sendMessage("Aucune panoplie ne correspond a \"" + query + "\".");
+            return true;
+        }
+        StringBuilder sb = new StringBuilder("<b>Panoplies</b> (" + found.size() + ") :");
+        found.stream().limit(20).forEach(e -> sb.append("<br/>").append(e.getKey()).append(" - ").append(e.getValue()));
+        player.sendMessage(sb.toString());
         return true;
     }
 
