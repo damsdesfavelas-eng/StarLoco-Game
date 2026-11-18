@@ -141,6 +141,17 @@ public final class Atrion {
                 if (player.getGroup() == null) return false; // reserve aux admins
                 return cmd.equals(".item") ? commandFindItem(player, msg.trim().substring(cmd.length()).trim())
                         : commandFindSet(player, msg.trim().substring(cmd.length()).trim());
+            case ".restat":
+                if (player.getFight() != null || player.getExchangeAction() != null) {
+                    player.sendMessage("Impossible pendant un combat ou un echange.");
+                    return true;
+                }
+                player.resetStats(false); // garde les parchemins
+                player.refreshStats();
+                SocketManager.GAME_SEND_STATS_PACKET(player);
+                DatabaseManager.get(PlayerData.class).update(player);
+                player.sendMessage("Caracteristiques remises a zero : tu as <b>" + player.getCapital() + "</b> points de capital a repartir. Les parchemins sont conserves.");
+                return true;
             case ".points":
                 player.sendMessage("Tu as <b>" + data().points(player.getId()) + "</b> points de boutique. Voir <b>.boutique</b>.");
                 return true;
@@ -160,7 +171,7 @@ public final class Atrion {
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
             case ".atrion":
                 player.sendMessage("<b>Commandes Atrion</b> : .prestige, .palier, .zaap, .banque, .hdv, .astrub, .craft &lt;metier&gt;, "
-                        + ".drops &lt;monstre ou objet&gt;, .top, .points, .boutique, .acheter, .recycler, .ameliorer");
+                        + ".drops &lt;monstre ou objet&gt;, .top, .points, .boutique, .acheter, .recycler, .ameliorer, .restat");
                 return true;
             default:
                 return false;
