@@ -14,12 +14,12 @@ import java.util.Map;
 public enum Rarity {
     NORMAL(0, "Normal", 1.0),
     RARE(1, "Rare", 1.25),
-    EPIQUE(2, "Epique", 1.5),
-    LEGENDAIRE(3, "Legendaire", 1.75),
+    EPIQUE(2, "Épique", 1.5),
+    LEGENDAIRE(3, "Légendaire", 1.75),
     MYTHIQUE(4, "Mythique", 2.0);
 
     public static final int RARITY_TXT_STAT = Constant.STATS_CHANGE_BY; // 985
-    private static final String PREFIX = "Rarete ";
+    private static final String STAR = "\u2605";
 
     public final int tier;
     public final String label;
@@ -37,15 +37,37 @@ public enum Rarity {
         return tier > MYTHIQUE.tier ? MYTHIQUE : NORMAL;
     }
 
-    /** Rarete d'un objet (NORMAL si aucune marque). */
+    /** Texte affiche dans l'infobulle, ex : "★ Épique ★". */
+    public String mark() {
+        return STAR + " " + label + " " + STAR;
+    }
+
+    /** Rarete d'un objet (NORMAL si aucune marque). Accepte aussi l'ancien format "Rarete X". */
     public static Rarity of(GameObject object) {
         if (object == null) return NORMAL;
         String txt = object.getTxtStat().get(RARITY_TXT_STAT);
-        if (txt == null || !txt.startsWith(PREFIX)) return NORMAL;
-        String label = txt.substring(PREFIX.length());
-        for (Rarity r : values())
-            if (r.label.equalsIgnoreCase(label)) return r;
+        if (txt == null) return NORMAL;
+        String key = normalize(txt);
+        for (Rarity r : new Rarity[]{MYTHIQUE, LEGENDAIRE, EPIQUE, RARE}) {
+            if (txt.contains(STAR) || txt.startsWith("Rarete ")) {
+                if (key.contains(normalize(r.label))) return r;
+            }
+        }
         return NORMAL;
+    }
+
+    private static String normalize(String s) {
+        return java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase();
+    }
+
+    /**
+     * Signature par rune lors d'une forgemagie : on garde la marque de rarete si l'objet en a une,
+     * sinon on met le nom du forgemage (comportement normal).
+     */
+    public static void signForge(GameObject object, String forgerName) {
+        if (of(object) != NORMAL) return;
+        object.getTxtStat().put(RARITY_TXT_STAT, forgerName);
     }
 
     /**
@@ -60,7 +82,7 @@ public enum Rarity {
             if (value > 0 && isBoostable(entry.getKey()))
                 entry.setValue((int) Math.ceil(value * multiplier));
         }
-        object.getTxtStat().put(RARITY_TXT_STAT, PREFIX + label);
+        object.getTxtStat().put(RARITY_TXT_STAT, mark());
         DatabaseManager.get(ObjectData.class).update(object);
     }
 

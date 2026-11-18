@@ -1174,7 +1174,7 @@ public class JobAction {
             else if (lvlElementRune == 25) coef = 65;
             else if (lvlElementRune == 50) coef = 85;
             if (isSigningRune)
-                objectFm.addTxtStat(985, this.player.getName());
+                org.starloco.locos.atrion.Rarity.signForge(objectFm, this.player.getName()); // Atrion
 
             if (lvlElementRune > 0 && lvlQuaStatsRune == 0) {
                 for (SpellEffect effect : objectFm.getEffects()) {
@@ -1262,7 +1262,7 @@ public class JobAction {
         else if (successN) {
             pwrPerte = 0;
             if (isSigningRune) {
-                objectFm.addTxtStat(985, this.player.getName());
+                org.starloco.locos.atrion.Rarity.signForge(objectFm, this.player.getName()); // Atrion
             }
 
             boolean negative = false;
@@ -2445,9 +2445,7 @@ public class JobAction {
 
                 if (signingObject != null) {
                     this.player.removeItemByTemplateId(signingObject.getTemplate().getId(), 1, false);
-                    if (newObject.getTxtStat().containsKey(985))
-                        newObject.getTxtStat().remove(985);
-                    newObject.addTxtStat(985, this.player.getName());
+                    org.starloco.locos.atrion.Rarity.signForge(newObject, this.player.getName()); // Atrion
                 }
 
                 newObject.getStats().addOneStat(runeTemplate.getCharacteristic(), runeTemplate.getBonus());
@@ -2590,9 +2588,7 @@ public class JobAction {
 
             if(result == 1) { // succes neutre
                 if (signingObject != null) {
-                    if (newObject.getTxtStat().containsKey(985))
-                        newObject.getTxtStat().remove(985);
-                    newObject.addTxtStat(985, this.player.getName());
+                    org.starloco.locos.atrion.Rarity.signForge(newObject, this.player.getName()); // Atrion
                 }
 
                 if(!cancel)
