@@ -310,7 +310,7 @@ public final class Atrion {
                 if (d.getCeil() > 0) sb.append(" (prospection ").append(d.getCeil()).append(")");
                 if (++shown >= 25) break;
             }
-            sb.append("<br/><i>+ parchemins (toutes caracteristiques, selon le niveau) et parchemins de sort tres rares.</i>");
+            sb.append("<br/><i>+ parchemins, parchemins de sort tres rares et equipements de niveau proche (rarete selon ton prestige).</i>");
             player.sendMessage(sb.toString());
             return true;
         }
@@ -396,6 +396,7 @@ public final class Atrion {
         double prospect = Math.max(1.0, Math.min(3.0, winner.atrionProspection() / 100.0));
         double factor = Math.sqrt(prospect);
         ThreadLocalRandom rng = ThreadLocalRandom.current();
+        List<ObjectTemplate> equipmentWon = new ArrayList<>();
         for (MonsterGrade grade : defeated) {
             if (grade == null) continue;
             int level = grade.getLevel();
@@ -410,7 +411,77 @@ public final class Atrion {
                 add(objectsWon, pool[rng.nextInt(pool.length)]);
             if (rng.nextDouble() * 100 < CHANCE_SPELL * factor)
                 add(objectsWon, SPELL_SCROLLS[rng.nextInt(SPELL_SCROLLS.length)]);
+            if (rng.nextDouble() * 100 < CHANCE_EQUIPMENT * factor) {
+                ObjectTemplate equipment = randomEquipmentForLevel(level, rng);
+                if (equipment != null) equipmentWon.add(equipment);
+            }
         }
+        giveWorldEquipment(winner.getPlayer(), equipmentWon);
+    }
+
+    // ------------------------------------------------------------------ Equipements droppables partout
+
+    /** Types d'equipement concernes (hors familiers et Dofus). */
+    private static final Set<Integer> EQUIPMENT_TYPES = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 19, 20, 21, 22, 82));
+    /** Chance par monstre vaincu qu'un equipement de son niveau tombe, en pourcentage. */
+    private static final double CHANCE_EQUIPMENT = 0.5;
+    private static volatile List<ObjectTemplate> worldEquipment;
+
+    /** Equipements droppables par niveau : ni deja lies a un monstre, ni objets MJ, ni objets sans caracteristiques. */
+    private static List<ObjectTemplate> worldEquipment() {
+        if (worldEquipment == null) {
+            synchronized (Atrion.class) {
+                if (worldEquipment == null) {
+                    Set<Integer> monsterDrops = new HashSet<>();
+                    for (Monster m : World.world.getMonstres())
+                        for (World.Drop d : m.getDrops()) monsterDrops.add(d.getObjectId());
+                    List<ObjectTemplate> list = World.world.getObjectsTemplates().values().stream()
+                            .filter(t -> EQUIPMENT_TYPES.contains(t.getType()))
+                            .filter(t -> !monsterDrops.contains(t.getId()))
+                            .filter(t -> t.getStrTemplate() != null && !t.getStrTemplate().trim().isEmpty())
+                            .filter(t -> !t.getName().contains("(MJ)"))
+                            .sorted(Comparator.comparingInt(ObjectTemplate::getLevel))
+                            .collect(Collectors.toList());
+                    worldEquipment = list;
+                }
+            }
+        }
+        return worldEquipment;
+    }
+
+    private static ObjectTemplate randomEquipmentForLevel(int monsterLevel, ThreadLocalRandom rng) {
+        int min = Math.max(1, monsterLevel - 10), max = monsterLevel + 5;
+        List<ObjectTemplate> candidates = worldEquipment().stream()
+                .filter(t -> t.getLevel() >= min && t.getLevel() <= max).collect(Collectors.toList());
+        if (candidates.isEmpty()) return null;
+        return candidates.get(rng.nextInt(candidates.size()));
+    }
+
+    /** Rarete d'un equipement droppe selon le prestige : rarete du prestige, petite chance au-dessus. */
+    public static Rarity rollRarityForPrestige(int prestige, ThreadLocalRandom rng) {
+        Rarity base = Rarity.fromTier(Math.min(prestige, Rarity.LEGENDAIRE.tier));
+        double upgrade = base == Rarity.LEGENDAIRE ? 2.0 : 10.0;
+        if (rng.nextDouble() * 100 < upgrade) return Rarity.fromTier(base.tier + 1);
+        return base;
+    }
+
+    private static void giveWorldEquipment(Player player, List<ObjectTemplate> templates) {
+        if (player == null || templates.isEmpty()) return;
+        org.starloco.locos.util.TimerWaiter.addNext(() -> {
+            ThreadLocalRandom rng = ThreadLocalRandom.current();
+            int prestige = Prestige.get(player);
+            for (ObjectTemplate template : templates) {
+                GameObject item = template.createNewItem(1, false);
+                if (item == null) continue;
+                Rarity rarity = rollRarityForPrestige(prestige, rng);
+                rarity.applyTo(item);
+                player.addItem(item, true);
+                World.world.addGameObject(item);
+                player.sendMessage("<b>Butin</b> : " + template.getName()
+                        + (rarity == Rarity.NORMAL ? "" : " " + rarity.mark()) + " (niv. " + template.getLevel() + ")");
+            }
+            DatabaseManager.get(PlayerData.class).update(player);
+        }, 1500);
     }
 
     private static void add(Map<Integer, Integer> objectsWon, int templateId) {
