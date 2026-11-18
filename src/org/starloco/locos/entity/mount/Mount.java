@@ -238,7 +238,7 @@ public class Mount {
 	public synchronized void checkBaby(Player player, MountPark mp) {
         if(this.fecundatedDate == -1) return;
 		int time = Generation.getTimeGestation(Constant.getGeneration(this.getColor()));
-        int actualHours = (int) ((System.currentTimeMillis() - this.getFecundatedDate()) / 3600000) + 1;
+        int actualHours = (int) ((System.currentTimeMillis() - this.getFecundatedDate()) * ATRION_BREEDING / 3600000) + 1; // Atrion : gestation x5
 
         if(time < actualHours && actualHours < time + 24 * 7) {
             boolean coupleReprod = World.world.getMountById(this.getCouple()) != null && World.world.getMountById(this.getCouple()).getCapacitys().contains(3);
@@ -486,8 +486,11 @@ public class Mount {
 		return Generation.getPods(Constant.getGeneration(this.color), this.level);
 	}
 	
+	/** Atrion : elevage accelere. */
+	public static final int ATRION_BREEDING = 5;
+
 	public void addXp(long amount) {
-		this.exp += amount;
+		this.exp += amount * 3; // Atrion : XP de monture x3
 		ExperienceTables.ExperienceTable xpTable = World.world.getExperiences().mounts;
 		while(this.exp >= xpTable.maxXpAt(this.level) && this.level < xpTable.maxLevel()) {
 			this.addLvl();
@@ -531,14 +534,14 @@ public class Mount {
 	}
 	
 	private void aumEndurance(int endurance) {
-		this.endurance += (endurance / 100) * this.getBonusFatigue() /* * Generation.getLearningRate(Constant.getGeneration(this.color))*/;
+		this.endurance += (endurance / 100) * this.getBonusFatigue() * ATRION_BREEDING /* * Generation.getLearningRate(Constant.getGeneration(this.color))*/;
 		if(this.capacitys.contains(5)) this.endurance += 1;
 		if(this.endurance > 10000) this.endurance = 10000;
 	}
 	
 	private void aumMaturity(int Resist) {
 		if(this.maturity < this.getMaxMaturity()) {
-			this.maturity += (Resist / 100) * this.getBonusFatigue();
+			this.maturity += (Resist / 100) * this.getBonusFatigue() * ATRION_BREEDING;
 			if(this.capacitys.contains(7))
 				this.maturity += Resist / 100;
 			if(this.size < 100) {
@@ -567,13 +570,13 @@ public class Mount {
 	}
 	
 	private void aumAmor(int amour) {
-		this.amour += (amour / 100) * this.getBonusFatigue();
+		this.amour += (amour / 100) * this.getBonusFatigue() * ATRION_BREEDING;
 		if(this.capacitys.contains(6)) this.amour += amour / 500;
 		if(this.amour > 10000) this.amour = 10000;
 	}
 	
 	private void aumState(int state) {
-		this.state += (state / 100) * this.getBonusFatigue();
+		this.state += (state / 100) * this.getBonusFatigue() * ATRION_BREEDING;
 		if(this.state > 10000) this.state = 10000;
 	}
 

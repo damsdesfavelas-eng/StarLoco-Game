@@ -132,12 +132,26 @@ public final class Atrion {
                 if (player.getGroup() == null) return false; // reserve aux admins
                 return cmd.equals(".item") ? commandFindItem(player, msg.trim().substring(cmd.length()).trim())
                         : commandFindSet(player, msg.trim().substring(cmd.length()).trim());
+            case ".points":
+                player.sendMessage("Tu as <b>" + data().points(player.getId()) + "</b> points de boutique. Voir <b>.boutique</b>.");
+                return true;
+            case ".boutique":
+                return commandShop(player);
+            case ".acheter":
+                return commandBuy(player, msg.trim().substring(cmd.length()).trim());
+            case ".recycler":
+                return commandRecycle(player, msg.trim().substring(cmd.length()).trim());
+            case ".ameliorer":
+                return commandUpgrade(player, msg.trim().substring(cmd.length()).trim());
+            case ".hdv":
+                return commandHdv(player, msg.trim().substring(cmd.length()).trim());
             case ".palier":
                 return DungeonTiers.handleCommand(player, msg.trim().substring(cmd.length()).trim());
             case ".craft":
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
             case ".atrion":
-                player.sendMessage("<b>Commandes Atrion</b> : .prestige, .palier, .zaap, .banque, .astrub, .craft &lt;metier&gt;, .drops &lt;monstre ou objet&gt;, .top");
+                player.sendMessage("<b>Commandes Atrion</b> : .prestige, .palier, .zaap, .banque, .hdv, .astrub, .craft &lt;metier&gt;, "
+                        + ".drops &lt;monstre ou objet&gt;, .top, .points, .boutique, .acheter, .recycler, .ameliorer");
                 return true;
             default:
                 return false;
@@ -245,6 +259,180 @@ public final class Atrion {
         StringBuilder sb = new StringBuilder("<b>Panoplies</b> (" + found.size() + ") :");
         found.stream().limit(20).forEach(e -> sb.append("<br/>").append(e.getKey()).append(" - ").append(e.getValue()));
         player.sendMessage(sb.toString());
+        return true;
+    }
+
+    // ------------------------------------------------------------------ Chat
+
+    /** Etoiles de prestige devant les messages du chat. */
+    public static String decorateChat(Player player, String msg) {
+        int p = Prestige.get(player);
+        if (p <= 0) return msg;
+        StringBuilder stars = new StringBuilder();
+        for (int i = 0; i < p; i++) stars.append("\u2605");
+        return stars + " " + msg;
+    }
+
+    // ------------------------------------------------------------------ Boutique de points
+
+    /** {nom, templateId, prix} */
+    private static final Object[][] SHOP = {
+            {"Puissant Parchemin de Force", 797, 15}, {"Puissant Parchemin d'Intelligence", 817, 15},
+            {"Puissant Parchemin de Chance", 814, 15}, {"Puissant Parchemin d'Agilite", 801, 15},
+            {"Puissant Parchemin de Vitalite", 810, 15}, {"Puissant Parchemin de Sagesse", 805, 20},
+            {"Parchemin de Sorts (+1 point de sort)", 684, 40},
+    };
+
+    private static boolean commandShop(Player player) {
+        StringBuilder sb = new StringBuilder("<b>Boutique Atrion</b> (tu as " + data().points(player.getId()) + " points) :");
+        for (int i = 0; i < SHOP.length; i++)
+            sb.append("<br/>").append(i + 1).append(". ").append(SHOP[i][0]).append(" : ").append(SHOP[i][2]).append(" pts");
+        sb.append("<br/>Achat : <b>.acheter numero [quantite]</b>. Points gagnes : 1 par combat gagne (+ palier du donjon), recyclage d'objets rares.");
+        player.sendMessage(sb.toString());
+        return true;
+    }
+
+    private static boolean commandBuy(Player player, String args) {
+        String[] parts = args.split("\\s+");
+        int index, quantity = 1;
+        try {
+            index = Integer.parseInt(parts[0]) - 1;
+            if (parts.length > 1) quantity = Math.max(1, Math.min(100, Integer.parseInt(parts[1])));
+        } catch (Exception e) {
+            player.sendMessage("Utilisation : <b>.acheter numero [quantite]</b> (voir .boutique)");
+            return true;
+        }
+        if (index < 0 || index >= SHOP.length) {
+            player.sendMessage("Numero inconnu, voir .boutique");
+            return true;
+        }
+        int templateId = (Integer) SHOP[index][1];
+        int cost = (Integer) SHOP[index][2] * quantity;
+        ObjectTemplate template = World.world.getObjTemplate(templateId);
+        if (template == null) {
+            player.sendMessage("Objet indisponible.");
+            return true;
+        }
+        if (!data().addPoints(player.getId(), -cost)) {
+            player.sendMessage("Pas assez de points (" + cost + " necessaires, tu en as " + data().points(player.getId()) + ").");
+            return true;
+        }
+        GameObject item = template.createNewItem(quantity, false);
+        if (item != null) {
+            if (player.addItem(item, true, false)) World.world.addGameObject(item);
+            DatabaseManager.get(PlayerData.class).update(player);
+        }
+        player.sendMessage("Achat : " + quantity + " x " + SHOP[index][0] + " (-" + cost + " pts, reste " + data().points(player.getId()) + ").");
+        return true;
+    }
+
+    // ------------------------------------------------------------------ Recyclage / amelioration
+
+    private static final int[] RECYCLE_POINTS = {0, 2, 5, 15, 40};
+    private static final int[] UPGRADE_COST = {10, 30, 80, 200}; // index = rarete actuelle
+
+    /** Objet non equipe de l'inventaire dont le nom correspond (le plus rare d'abord). */
+    private static GameObject findInventoryItem(Player player, String query) {
+        String q = norm(query);
+        if (q.length() < 3) return null;
+        return player.getItems().values().stream()
+                .filter(o -> o != null && o.getPosition() == Constant.ITEM_POS_NO_EQUIPED)
+                .filter(o -> isEquipmentType(o.getTemplate().getType()))
+                .filter(o -> norm(o.getTemplate().getName()).contains(q))
+                .max(Comparator.comparingInt(o -> Rarity.of(o).tier))
+                .orElse(null);
+    }
+
+    private static boolean commandRecycle(Player player, String query) {
+        GameObject item = findInventoryItem(player, query);
+        if (item == null) {
+            player.sendMessage("Utilisation : <b>.recycler nom de l'objet</b> (objet rare non equipe, dans ton inventaire).");
+            return true;
+        }
+        Rarity rarity = Rarity.of(item);
+        if (rarity == Rarity.NORMAL) {
+            player.sendMessage("Seuls les objets Rares ou mieux se recyclent.");
+            return true;
+        }
+        int earned = RECYCLE_POINTS[rarity.tier];
+        player.removeItem(item.getGuid(), 1, true, true);
+        data().addPoints(player.getId(), earned);
+        DatabaseManager.get(PlayerData.class).update(player);
+        player.sendMessage(item.getTemplate().getName() + " " + rarity.mark() + " recycle : +" + earned + " pts (total " + data().points(player.getId()) + ").");
+        return true;
+    }
+
+    private static boolean commandUpgrade(Player player, String query) {
+        GameObject item = findInventoryItem(player, query);
+        if (item == null) {
+            player.sendMessage("Utilisation : <b>.ameliorer nom de l'objet</b> (objet non equipe). Couts : Normal->Rare 10, Rare->Epique 30, Epique->Legendaire 80, Legendaire->Mythique 200 pts.");
+            return true;
+        }
+        if (item.getQuantity() > 1) {
+            player.sendMessage("Separe d'abord la pile : on ne peut ameliorer qu'un objet a la fois.");
+            return true;
+        }
+        Rarity current = Rarity.of(item);
+        if (current == Rarity.MYTHIQUE) {
+            player.sendMessage("Cet objet est deja Mythique.");
+            return true;
+        }
+        int cost = UPGRADE_COST[current.tier];
+        if (!data().addPoints(player.getId(), -cost)) {
+            player.sendMessage("Il faut " + cost + " points (tu en as " + data().points(player.getId()) + ").");
+            return true;
+        }
+        Rarity next = Rarity.fromTier(current.tier + 1);
+        next.upgradeFrom(current, item);
+        SocketManager.GAME_SEND_UPDATE_OBJECT_DISPLAY_PACKET(player, item);
+        player.sendMessage(item.getTemplate().getName() + " passe " + next.mark() + " (-" + cost + " pts).");
+        return true;
+    }
+
+    // ------------------------------------------------------------------ Hotel de vente partout
+
+    /** Hotels de vente de Bonta : {nom, carte}. */
+    private static final Object[][] HDV = {
+            {"bijoux", 4216}, {"armes", 4174}, {"armes2", 4098}, {"cordonnier", 4183}, {"tailleur", 4172},
+            {"alchimiste", 4271}, {"ressources", 4262}, {"familiers", 8759}, {"boulanger", 2221},
+            {"bucheron", 4178}, {"mineur", 4179}, {"pecheur", 4247}, {"paysan", 4299}, {"boucher", 4287},
+            {"runes", 8757}, {"ames", 10129}, {"divers", 4232}, {"parchemins", 8760}, {"objets", 6159},
+    };
+
+    private static boolean commandHdv(Player player, String args) {
+        String[] parts = norm(args).split("\\s+");
+        if (parts[0].isEmpty()) {
+            StringBuilder sb = new StringBuilder("Utilisation : <b>.hdv categorie</b> (achat) ou <b>.hdv categorie vente</b>. Categories : ");
+            for (int i = 0; i < HDV.length; i++) sb.append(i == 0 ? "" : ", ").append(HDV[i][0]);
+            player.sendMessage(sb.toString());
+            return true;
+        }
+        if (player.getFight() != null || player.isInPrison()) return true;
+        Integer mapId = null;
+        for (Object[] h : HDV) if (((String) h[0]).equals(parts[0])) mapId = (Integer) h[1];
+        if (mapId == null) {
+            player.sendMessage("Categorie inconnue. Tape .hdv pour la liste.");
+            return true;
+        }
+        boolean sell = parts.length > 1 && parts[1].startsWith("vente");
+        org.starloco.locos.hdv.BigStore bigStore = World.world.getHdv(mapId);
+        if (bigStore == null) {
+            player.sendMessage("Cet hotel de vente n'existe pas sur ce serveur.");
+            return true;
+        }
+        if (player.getExchangeAction() != null)
+            org.starloco.locos.game.GameClient.leaveExchange(player);
+        String info = "1,10,100;" + bigStore.getStrCategory() + ";" + bigStore.parseTaxe() + ";" + bigStore.getLvlMax() + ";"
+                + bigStore.getMaxAccountItem() + ";-1;" + bigStore.getDuration();
+        org.starloco.locos.game.action.type.BigStoreActionData data = new org.starloco.locos.game.action.type.BigStoreActionData(mapId);
+        if (sell) {
+            SocketManager.GAME_SEND_ECK_PACKET(player, 10, info);
+            player.setExchangeAction(new ExchangeAction<>(ExchangeAction.AUCTION_HOUSE_SELLING, data));
+            SocketManager.GAME_SEND_HDVITEM_SELLING(player, data.hdvId);
+        } else {
+            SocketManager.GAME_SEND_ECK_PACKET(player, 11, info);
+            player.setExchangeAction(new ExchangeAction<>(ExchangeAction.AUCTION_HOUSE_BUYING, data));
+        }
         return true;
     }
 
@@ -393,7 +581,14 @@ public final class Atrion {
      * Ajoute les parchemins bonus gagnes par un joueur a la fin d'un combat contre des monstres.
      * Appele depuis Fight pour chaque gagnant.
      */
-    public static void rollBonusDrops(Collection<MonsterGrade> defeated, Fighter winner, Map<Integer, Integer> objectsWon, int tier) {
+    /** Defi de donjon : palier Legendaire, un boss dans le groupe, victoire en 15 tours maximum. */
+    public static boolean isDungeonChallengeWon(int tier, Collection<MonsterGrade> mobs, int turnCalls, int fighters) {
+        if (tier < 3 || mobs == null || fighters <= 0) return false;
+        boolean boss = mobs.stream().anyMatch(g -> g != null && g.getTemplate() != null && g.getTemplate().isBoss());
+        return boss && turnCalls <= 15 * fighters;
+    }
+
+    public static void rollBonusDrops(Collection<MonsterGrade> defeated, Fighter winner, Map<Integer, Integer> objectsWon, int tier, boolean challengeWon) {
         if (defeated == null || winner == null || objectsWon == null) return;
         double prospect = Math.max(1.0, Math.min(3.0, winner.atrionProspection() / 100.0));
         double factor = Math.sqrt(prospect);
@@ -419,6 +614,32 @@ public final class Atrion {
             }
         }
         giveWorldEquipment(winner.getPlayer(), equipmentWon, tier);
+
+        Player player = winner.getPlayer();
+        if (player != null) {
+            // Points de boutique : 1 par combat gagne, + palier du donjon
+            int earned = 1 + Math.max(0, tier);
+            data().addPoints(player.getId(), earned);
+            // Defi de donjon reussi : un objet Mythique garanti
+            if (challengeWon) {
+                int bossLevel = defeated.stream().filter(g -> g != null && g.getTemplate() != null && g.getTemplate().isBoss())
+                        .mapToInt(MonsterGrade::getLevel).max().orElse(winner.getLvl());
+                ObjectTemplate reward = randomEquipmentForLevel(bossLevel, rng);
+                if (reward != null) giveFixedRarity(player, reward, Rarity.MYTHIQUE, "<b>Defi reussi !</b> ");
+            }
+        }
+    }
+
+    private static void giveFixedRarity(Player player, ObjectTemplate template, Rarity rarity, String prefix) {
+        org.starloco.locos.util.TimerWaiter.addNext(() -> {
+            GameObject item = template.createNewItem(1, false);
+            if (item == null) return;
+            rarity.applyTo(item);
+            player.addItem(item, true);
+            World.world.addGameObject(item);
+            player.sendMessage(prefix + template.getName() + " " + rarity.mark() + " (niv. " + template.getLevel() + ")");
+            DatabaseManager.get(PlayerData.class).update(player);
+        }, 2000);
     }
 
     // ------------------------------------------------------------------ Equipements droppables partout

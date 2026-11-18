@@ -821,10 +821,10 @@ public class GameClient {
                     if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF).getTemplate().getId() == 10844)
                         msg = Formulas.translateMsg(msg);
                 if (this.player.getFight() == null) {
-                    SocketManager.GAME_SEND_cMK_PACKET_TO_MAP(this.player.getCurMap(), "", this.player.getId(), this.player.getName(), msg);
+                    SocketManager.GAME_SEND_cMK_PACKET_TO_MAP_RAW(this.player.getCurMap(), "", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                     // Broken: AuctionManager.getInstance().onPlayerChat(this.player, msg);
                 } else
-                    SocketManager.GAME_SEND_cMK_PACKET_TO_FIGHT(this.player.getFight(), 7, "", this.player.getId(), this.player.getName(), msg);
+                    SocketManager.GAME_SEND_cMK_PACKET_TO_FIGHT(this.player.getFight(), 7, "", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                 break;
             case '^':// Canal Incarnam
                 msg = packet.split("\\|", 2)[1];
@@ -878,7 +878,7 @@ public class GameClient {
                 if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF) != null)
                     if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF).getTemplate().getId() == 10844)
                         msg = Formulas.translateMsg(msg);
-                SocketManager.GAME_SEND_cMK_PACKET_TO_GROUP(this.player.getParty(), "$", this.player.getId(), this.player.getName(), msg);
+                SocketManager.GAME_SEND_cMK_PACKET_TO_GROUP(this.player.getParty(), "$", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                 break;
 
             case ':'://Canal commerce
@@ -909,7 +909,7 @@ public class GameClient {
                     if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF) != null)
                         if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF).getTemplate().getId() == 10844)
                             msg = Formulas.translateMsg(msg);
-                    SocketManager.GAME_SEND_cMK_PACKET_TO_ALL(this.player, ":", this.player.getId(), this.player.getName(), msg);
+                    SocketManager.GAME_SEND_cMK_PACKET_TO_ALL(this.player, ":", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                 }
                 break;
             case '@'://Canal Admin
@@ -951,7 +951,7 @@ public class GameClient {
                     if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF) != null)
                         if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF).getTemplate().getId() == 10844)
                             msg = Formulas.translateMsg(msg);
-                    SocketManager.GAME_SEND_cMK_PACKET_TO_ALL(this.player, "?", this.player.getId(), this.player.getName(), msg);
+                    SocketManager.GAME_SEND_cMK_PACKET_TO_ALL(this.player, "?", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                 }
                 break;
             case '%'://Canal guilde
@@ -966,7 +966,7 @@ public class GameClient {
                 if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF) != null)
                     if (this.player.getObjetByPos(Constant.ITEM_POS_ROLEPLAY_BUFF).getTemplate().getId() == 10844)
                         msg = Formulas.translateMsg(msg);
-                SocketManager.GAME_SEND_cMK_PACKET_TO_GUILD(this.player.getGuild(), "%", this.player.getId(), this.player.getName(), msg);
+                SocketManager.GAME_SEND_cMK_PACKET_TO_GUILD(this.player.getGuild(), "%", this.player.getId(), this.player.getName(), org.starloco.locos.atrion.Atrion.decorateChat(this.player, msg));
                 break;
             case '!'://Alignement
                 if (!this.player.get_canaux().contains(packet.charAt(2) + ""))

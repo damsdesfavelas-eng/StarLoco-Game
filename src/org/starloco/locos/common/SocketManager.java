@@ -925,6 +925,14 @@ public class SocketManager {
         send(out, packet.toString());
     }
 
+    /** Atrion : message de joueur sur la carte, sans traduction (le chat de carte affichait "... not found"). */
+    public static void GAME_SEND_cMK_PACKET_TO_MAP_RAW(GameMap map, String suffix, int guid, String name, String msg) {
+        String packet = "cMK" + suffix + "|" + guid + "|" + name + "|" + msg;
+        for (Player target : map.getPlayers())
+            if (target != null)
+                send(target, packet);
+    }
+
     public static void GAME_SEND_cMK_PACKET_TO_MAP(GameMap map, String suffix, int guid, String name, String key) {
         String packet = "cMK" + suffix + "|" + guid + "|" + name + "|";
         for (Player target : map.getPlayers()) {

@@ -86,6 +86,20 @@ public enum Rarity {
         DatabaseManager.get(ObjectData.class).update(object);
     }
 
+    /** Passe un objet d'une rarete a celle-ci (recalcule les caracteristiques). */
+    public void upgradeFrom(Rarity from, GameObject object) {
+        if (object == null) return;
+        double ratio = this.multiplier / from.multiplier;
+        for (Map.Entry<Integer, Integer> entry : object.getStats().getEffects().entrySet()) {
+            int value = entry.getValue();
+            if (value > 0 && isBoostable(entry.getKey()))
+                entry.setValue((int) Math.ceil(value * ratio));
+        }
+        if (this == NORMAL) object.getTxtStat().remove(RARITY_TXT_STAT);
+        else object.getTxtStat().put(RARITY_TXT_STAT, mark());
+        DatabaseManager.get(ObjectData.class).update(object);
+    }
+
     /** On ne multiplie pas les PA/PM/portee/invocations pour garder l'equilibre. */
     private static boolean isBoostable(int statId) {
         switch (statId) {

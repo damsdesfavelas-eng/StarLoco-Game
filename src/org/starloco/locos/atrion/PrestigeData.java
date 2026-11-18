@@ -15,6 +15,23 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
 
     private final Map<Integer, Integer> cache = new ConcurrentHashMap<>();
     private final java.util.Set<String> flags = ConcurrentHashMap.newKeySet();
+    private final Map<Integer, Integer> points = new ConcurrentHashMap<>();
+
+    public int points(int playerId) {
+        ensureLoaded();
+        return points.getOrDefault(playerId, 0);
+    }
+
+    /** Ajoute (ou retire si negatif) des points. Retourne false si le solde serait negatif. */
+    public synchronized boolean addPoints(int playerId, int delta) {
+        ensureLoaded();
+        int value = points.getOrDefault(playerId, 0) + delta;
+        if (value < 0) return false;
+        points.put(playerId, value);
+        execute("INSERT INTO `atrion_points` (player_id, points) VALUES (" + playerId + ", " + value + ") " +
+                "ON DUPLICATE KEY UPDATE points = " + value + ";");
+        return true;
+    }
     private volatile boolean loaded = false;
 
     public PrestigeData(HikariDataSource dataSource) {
@@ -28,6 +45,17 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
                 "`prestige` INT(11) NOT NULL DEFAULT 0, " +
                 "`updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+        execute("CREATE TABLE IF NOT EXISTS `atrion_points` (" +
+                "`player_id` INT(11) NOT NULL PRIMARY KEY, `points` INT(11) NOT NULL DEFAULT 0" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+        try {
+            getData("SELECT player_id, points FROM `atrion_points`;", result -> {
+                while (result.next())
+                    points.put(result.getInt("player_id"), result.getInt("points"));
+            });
+        } catch (SQLException e) {
+            logger.error("Atrion: impossible de charger les points", e);
+        }
         execute("CREATE TABLE IF NOT EXISTS `atrion_flags` (" +
                 "`player_id` INT(11) NOT NULL, `flag` VARCHAR(32) NOT NULL, PRIMARY KEY (`player_id`, `flag`)" +
                 ") ENGINE=InnoDB DEFAULT CHARSET=utf8;");

@@ -94,6 +94,8 @@ public class Fight {
     private MonsterGroup monsterGroup;
     /** Atrion : palier de donjon du combat (0 = normal). */
     public int atrionTier = 0;
+    /** Atrion : nombre de tours joues (pour les defis de donjon). */
+    private int atrionTurnCalls = 0;
     private Collector collector;
     private Prism prism;
     private GameMap map, mapOld;
@@ -1969,6 +1971,7 @@ public class Fight {
     }
 
     private void newTurn(Fighter current) {
+        this.atrionTurnCalls++; // Atrion
         // Si empoisonn� (Cr�er une fonction applyEndTurnbuff si
         // d'autres effets existent)
         for (SpellEffect SE : current.getBuffsByEffectID(131)) {
@@ -4992,7 +4995,8 @@ public class Fight {
                         }
                         // Atrion : parchemins bonus
                         if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
-                            org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon, this.atrionTier);
+                            org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon, this.atrionTier,
+                                    org.starloco.locos.atrion.Atrion.isDungeonChallengeWon(this.atrionTier, this.monsterGroup.getMobs().values(), this.atrionTurnCalls, this.team0.size() + this.team1.size()));
                         /** Drop Chasseur **/
                         if (player != null) {
                             ArrayList<Drop> temporary = new ArrayList<>(dropsMeats);
