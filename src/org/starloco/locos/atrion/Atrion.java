@@ -133,6 +133,9 @@ public final class Atrion {
                 return commandDrops(player, msg.trim().substring(cmd.length()).trim());
             case ".top":
                 return commandTop(player);
+            case ".give":
+                if (player.getGroup() == null) return false; // reserve aux admins
+                return commandGive(player, msg.trim().substring(cmd.length()).trim());
             case ".item":
             case ".pano":
                 if (player.getGroup() == null) return false; // reserve aux admins
@@ -245,6 +248,47 @@ public final class Atrion {
                 .append(" (niv. ").append(t.getLevel()).append(")"));
         if (found.size() > 20) sb.append("<br/>... precise ta recherche.");
         player.sendMessage(sb.toString());
+        return true;
+    }
+
+    /** Admin : .give numero rarete [max] - donne un objet dans la rarete choisie. */
+    private static boolean commandGive(Player player, String args) {
+        String[] parts = norm(args).split("\\s+");
+        if (parts.length < 2) {
+            player.sendMessage("Utilisation : <b>.give numero rarete [max]</b>, rarete = normal, rare, epique, legendaire ou mythique. "
+                    + "Ex : .give 2473 mythique max");
+            return true;
+        }
+        int templateId;
+        try {
+            templateId = Integer.parseInt(parts[0]);
+        } catch (NumberFormatException e) {
+            player.sendMessage("Le numero d'objet est invalide (utilise .item nom pour le trouver).");
+            return true;
+        }
+        Rarity rarity = null;
+        for (Rarity r : Rarity.values())
+            if (norm(r.label).startsWith(parts[1])) rarity = r;
+        if (rarity == null) {
+            player.sendMessage("Rarete inconnue : normal, rare, epique, legendaire ou mythique.");
+            return true;
+        }
+        boolean perfect = parts.length > 2 && parts[2].startsWith("max");
+        ObjectTemplate template = World.world.getObjTemplate(templateId);
+        if (template == null) {
+            player.sendMessage("L'objet " + templateId + " n'existe pas.");
+            return true;
+        }
+        GameObject item = template.createNewItem(1, perfect);
+        if (item == null) {
+            player.sendMessage("Impossible de creer cet objet.");
+            return true;
+        }
+        rarity.applyTo(item);
+        player.addItem(item, true);
+        World.world.addGameObject(item);
+        DatabaseManager.get(PlayerData.class).update(player);
+        player.sendMessage("Objet donne : " + template.getName() + (rarity == Rarity.NORMAL ? "" : " " + rarity.mark()) + (perfect ? " (jets parfaits)" : ""));
         return true;
     }
 
