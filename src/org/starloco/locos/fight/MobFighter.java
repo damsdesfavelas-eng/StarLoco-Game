@@ -40,8 +40,16 @@ public class MobFighter extends Fighter {
         return getBaseStats().get(Constant.STATS_ADD_VITA);
     }
 
+    private Stats atrionScaledStats;
+
     @Override
     protected Stats getBaseStats() {
+        // Atrion : monstres renforces selon le palier de donjon
+        if (this.fight != null && this.fight.atrionTier > 0) {
+            if (atrionScaledStats == null)
+                atrionScaledStats = org.starloco.locos.atrion.DungeonTiers.scaleMonsterStats(mobGrade.getStats(), this.fight.atrionTier);
+            return atrionScaledStats;
+        }
         return mobGrade.getStats();
     }
 

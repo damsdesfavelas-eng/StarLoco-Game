@@ -92,6 +92,8 @@ public class Fight {
     private boolean collectorProtect = false;
     private String curAction = "";
     private MonsterGroup monsterGroup;
+    /** Atrion : palier de donjon du combat (0 = normal). */
+    public int atrionTier = 0;
     private Collector collector;
     private Prism prism;
     private GameMap map, mapOld;
@@ -272,6 +274,10 @@ public class Fight {
         this.id = id;
         this.map = rpMap.getMapCopy();
         this.mapOld = rpMap;
+        // Atrion : palier de donjon choisi par le joueur qui lance le combat
+        this.atrionTier = org.starloco.locos.atrion.DungeonTiers.tierFor(perso, rpMap.getId());
+        if (this.atrionTier > 0)
+            perso.sendMessage("Combat de palier <b>" + org.starloco.locos.atrion.DungeonTiers.NAMES[this.atrionTier] + "</b> : monstres renforces, XP et butin ameliores.");
         this.init0 = Fighter.NewPlayer(this, perso);
         this.team0.put(perso.getId(), this.init0);
         for (Entry<Integer, MonsterGrade> entry : group.getMobs().entrySet()) {
@@ -342,6 +348,9 @@ public class Fight {
         this.map = rpMap.getMapCopy();
         this.mapOld = rpMap;
         demorph(perso);
+        // Atrion : palier de donjon
+        if (type == Constant.FIGHT_TYPE_PVM)
+            this.atrionTier = org.starloco.locos.atrion.DungeonTiers.tierFor(perso, rpMap.getId());
         this.init0 = Fighter.NewPlayer(this, perso);
         this.team0.put(perso.getId(), getInit0());
         for (Entry<Integer, MonsterGrade> entry : group.getMobs().entrySet()) {
@@ -2057,6 +2066,11 @@ public class Fight {
 
         if (perso.isDead() == 1 || isBegin() || perso.getFight() != null)
             return;
+        // Atrion : impossible de rejoindre un combat de palier superieur a son prestige
+        if (this.atrionTier > 0 && !org.starloco.locos.atrion.DungeonTiers.canJoin(perso, this.atrionTier)) {
+            perso.sendMessage("Ce combat est de palier " + org.starloco.locos.atrion.DungeonTiers.NAMES[this.atrionTier] + " : il faut etre prestige " + this.atrionTier + ".");
+            return;
+        }
         if (getType() == Constant.FIGHT_TYPE_AGRESSION || getType() == Constant.FIGHT_TYPE_CONQUETE || this.getType() == Constant.FIGHT_TYPE_PVT) {
             boolean multiIp = false;
 
@@ -4804,6 +4818,7 @@ public class Fight {
                     /** Xp,kamas **/
                     if (player != null) {
                         xpPlayer = FormuleOfficiel.getXp(i, winners, totalXP, nbbonus, getMobGroup() != null ? getMobGroup().getStarBonus() : 0, challXp, lvlMax, lvlMin, lvlLoosers, lvlWinners);
+                        xpPlayer = org.starloco.locos.atrion.DungeonTiers.scaleXp(xpPlayer, this.atrionTier); // Atrion
                         XP.set(xpPlayer);
 
                         if (this.getType() == Constant.FIGHT_TYPE_PVT && win == 1) {
@@ -4977,7 +4992,7 @@ public class Fight {
                         }
                         // Atrion : parchemins bonus
                         if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
-                            org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon);
+                            org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon, this.atrionTier);
                         /** Drop Chasseur **/
                         if (player != null) {
                             ArrayList<Drop> temporary = new ArrayList<>(dropsMeats);
@@ -5085,6 +5100,9 @@ public class Fight {
                                     }
 
                                     if (newObj != null && target.getItems().get(newObj.getGuid()) == null) {
+                                        // Atrion : equipement droppe en donjon de palier = rarete du palier
+                                        if (this.atrionTier > 0 && org.starloco.locos.atrion.Atrion.isEquipmentType(newObj.getTemplate().getType()))
+                                            org.starloco.locos.atrion.Atrion.rollRarityForPrestige(this.atrionTier, java.util.concurrent.ThreadLocalRandom.current()).applyTo(newObj);
                                         if (target.addItem(newObj, true, false))
                                             World.world.addGameObject(newObj);
                                     } else {

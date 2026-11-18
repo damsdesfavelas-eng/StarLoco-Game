@@ -132,10 +132,12 @@ public final class Atrion {
                 if (player.getGroup() == null) return false; // reserve aux admins
                 return cmd.equals(".item") ? commandFindItem(player, msg.trim().substring(cmd.length()).trim())
                         : commandFindSet(player, msg.trim().substring(cmd.length()).trim());
+            case ".palier":
+                return DungeonTiers.handleCommand(player, msg.trim().substring(cmd.length()).trim());
             case ".craft":
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
             case ".atrion":
-                player.sendMessage("<b>Commandes Atrion</b> : .prestige, .zaap, .banque, .astrub, .craft &lt;metier&gt;, .drops &lt;monstre ou objet&gt;, .top");
+                player.sendMessage("<b>Commandes Atrion</b> : .prestige, .palier, .zaap, .banque, .astrub, .craft &lt;metier&gt;, .drops &lt;monstre ou objet&gt;, .top");
                 return true;
             default:
                 return false;
@@ -391,7 +393,7 @@ public final class Atrion {
      * Ajoute les parchemins bonus gagnes par un joueur a la fin d'un combat contre des monstres.
      * Appele depuis Fight pour chaque gagnant.
      */
-    public static void rollBonusDrops(Collection<MonsterGrade> defeated, Fighter winner, Map<Integer, Integer> objectsWon) {
+    public static void rollBonusDrops(Collection<MonsterGrade> defeated, Fighter winner, Map<Integer, Integer> objectsWon, int tier) {
         if (defeated == null || winner == null || objectsWon == null) return;
         double prospect = Math.max(1.0, Math.min(3.0, winner.atrionProspection() / 100.0));
         double factor = Math.sqrt(prospect);
@@ -411,12 +413,12 @@ public final class Atrion {
                 add(objectsWon, pool[rng.nextInt(pool.length)]);
             if (rng.nextDouble() * 100 < CHANCE_SPELL * factor)
                 add(objectsWon, SPELL_SCROLLS[rng.nextInt(SPELL_SCROLLS.length)]);
-            if (rng.nextDouble() * 100 < CHANCE_EQUIPMENT * factor) {
+            if (rng.nextDouble() * 100 < CHANCE_EQUIPMENT * factor * DungeonTiers.equipmentDropFactor(tier)) {
                 ObjectTemplate equipment = randomEquipmentForLevel(level, rng);
                 if (equipment != null) equipmentWon.add(equipment);
             }
         }
-        giveWorldEquipment(winner.getPlayer(), equipmentWon);
+        giveWorldEquipment(winner.getPlayer(), equipmentWon, tier);
     }
 
     // ------------------------------------------------------------------ Equipements droppables partout
@@ -425,6 +427,10 @@ public final class Atrion {
     private static final Set<Integer> EQUIPMENT_TYPES = new HashSet<>(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 16, 17, 19, 20, 21, 22, 82));
     /** Chance par monstre vaincu qu'un equipement de son niveau tombe, en pourcentage. */
     private static final double CHANCE_EQUIPMENT = 0.5;
+
+    public static boolean isEquipmentType(int type) {
+        return EQUIPMENT_TYPES.contains(type);
+    }
     private static volatile List<ObjectTemplate> worldEquipment;
 
     /** Equipements droppables par niveau : ni deja lies a un monstre, ni objets MJ, ni objets sans caracteristiques. */
@@ -465,11 +471,12 @@ public final class Atrion {
         return base;
     }
 
-    private static void giveWorldEquipment(Player player, List<ObjectTemplate> templates) {
+    private static void giveWorldEquipment(Player player, List<ObjectTemplate> templates, int tier) {
         if (player == null || templates.isEmpty()) return;
         org.starloco.locos.util.TimerWaiter.addNext(() -> {
             ThreadLocalRandom rng = ThreadLocalRandom.current();
-            int prestige = Prestige.get(player);
+            // En donjon de palier, la rarete de base est celle du palier ; sinon celle du prestige
+            int prestige = tier > 0 ? tier : Prestige.get(player);
             for (ObjectTemplate template : templates) {
                 GameObject item = template.createNewItem(1, false);
                 if (item == null) continue;
