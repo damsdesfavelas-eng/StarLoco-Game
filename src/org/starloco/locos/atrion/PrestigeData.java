@@ -16,6 +16,20 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
     private final Map<Integer, Integer> cache = new ConcurrentHashMap<>();
     private final java.util.Set<String> flags = ConcurrentHashMap.newKeySet();
     private final Map<Integer, Integer> points = new ConcurrentHashMap<>();
+    private final Map<String, Long> buffs = new ConcurrentHashMap<>();
+
+    /** Fin (en ms) du bonus temporaire d'un personnage, 0 si aucun. */
+    public long buffUntil(int playerId, String buff) {
+        ensureLoaded();
+        return buffs.getOrDefault(playerId + ":" + buff, 0L);
+    }
+
+    public void setBuff(int playerId, String buff, long until) {
+        ensureLoaded();
+        buffs.put(playerId + ":" + buff, until);
+        execute("INSERT INTO `atrion_buffs` (player_id, buff, until_ms) VALUES (" + playerId + ", '" + buff.replace("'", "") + "', " + until + ") " +
+                "ON DUPLICATE KEY UPDATE until_ms = " + until + ";");
+    }
 
     public int points(int playerId) {
         ensureLoaded();
@@ -55,6 +69,17 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
             });
         } catch (SQLException e) {
             logger.error("Atrion: impossible de charger les points", e);
+        }
+        execute("CREATE TABLE IF NOT EXISTS `atrion_buffs` (" +
+                "`player_id` INT(11) NOT NULL, `buff` VARCHAR(16) NOT NULL, `until_ms` BIGINT NOT NULL, PRIMARY KEY (`player_id`, `buff`)" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+        try {
+            getData("SELECT player_id, buff, until_ms FROM `atrion_buffs`;", result -> {
+                while (result.next())
+                    buffs.put(result.getInt("player_id") + ":" + result.getString("buff"), result.getLong("until_ms"));
+            });
+        } catch (SQLException e) {
+            logger.error("Atrion: impossible de charger les bonus", e);
         }
         execute("CREATE TABLE IF NOT EXISTS `atrion_flags` (" +
                 "`player_id` INT(11) NOT NULL, `flag` VARCHAR(32) NOT NULL, PRIMARY KEY (`player_id`, `flag`)" +

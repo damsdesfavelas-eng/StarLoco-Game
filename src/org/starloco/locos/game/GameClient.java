@@ -1104,33 +1104,20 @@ public class GameClient {
 
     // T?l?portation de MJ
     private void goToMap(String packet) {
-        if (this.player.getGroup() == null)
+        // Atrion : double-clic sur la carte du monde ou la minicarte = voyage vers la carte visee (tous les joueurs)
+        if (this.player == null)
             return;
-        if (this.player.getGroup().isPlayer())
-            return;
-
         String datas = packet.substring(3);
         if (datas.isEmpty())
             return;
-        int MapX = Integer.parseInt(datas.split(",")[0]);
-        int MapY = Integer.parseInt(datas.split(",")[1]);
-        int sa = Optional.ofNullable(this.player.getCurMap()).map(GameMap::getArea).map(Area::getSuperArea).orElse(-1);
-
-        List<Integer> i = World.world.getMapIdByPosInSuperArea(MapX, MapY, sa);
-
-        if (i.isEmpty())
+        int MapX, MapY;
+        try {
+            MapX = Integer.parseInt(datas.split(",")[0].trim());
+            MapY = Integer.parseInt(datas.split(",")[1].trim());
+        } catch (Exception e) {
             return;
-
-        GameMap map = World.world.getMap(i.get(Formulas.getRandomValue(0, i.size() - 1)));
-        if (map == null)
-            return;
-        int CellId = map.getRandomFreeCellId();
-        if (map.getCase(CellId) == null)
-            return;
-        if (this.player.getFight() != null)
-            return;
-
-        this.player.teleport(map.getId(), CellId);
+        }
+        org.starloco.locos.atrion.Atrion.travelTo(this.player, MapX, MapY);
     }
 
     /** Fin Basics Packet **/

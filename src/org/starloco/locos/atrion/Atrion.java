@@ -90,7 +90,7 @@ public final class Atrion {
                 * (lvl != 199 ? org.starloco.locos.kernel.Config.rateXp : 1) * World.world.getConquestBonus(player);
         if (lvl != 199 && player.getAccount() != null && player.getAccount().isSubscribeWithoutCondition())
             total *= 1.2;
-        long xp = DungeonTiers.scaleXp((long) total, tier);
+        long xp = (long) (DungeonTiers.scaleXp((long) total, tier) * xpMultiplier(player));
         if (player.getLevel() >= Prestige.maxLevel(player)) return 0;
         return xp;
     }
@@ -102,6 +102,35 @@ public final class Atrion {
         } catch (Exception e) {
             World.world.logger.error("Atrion: estimation XP", e);
         }
+    }
+
+    // ------------------------------------------------------------------ Voyage par double-clic sur la carte
+    private static final Map<Integer, Long> lastTravel = new java.util.concurrent.ConcurrentHashMap<>();
+
+    public static void travelTo(Player player, int x, int y) {
+        if (player.getFight() != null) { player.sendMessage("Impossible de voyager pendant un combat."); return; }
+        if (player.getExchangeAction() != null) { player.sendMessage("Termine d'abord ton echange ou ton dialogue."); return; }
+        if (player.getCurMap() == null) return;
+        long now = System.currentTimeMillis();
+        Long last = lastTravel.get(player.getId());
+        if (last != null && now - last < 3000) return;
+        int superArea = java.util.Optional.ofNullable(player.getCurMap().getArea()).map(org.starloco.locos.area.Area::getSuperArea).orElse(-1);
+        org.starloco.locos.area.map.GameMap best = null;
+        int bestScore = -1;
+        for (int id : World.world.getMapIdByPosInSuperArea(x, y, superArea)) {
+            if (DungeonTiers.isDungeonMap(id)) continue;
+            org.starloco.locos.area.map.GameMap map = World.world.getMap(id);
+            if (map == null) continue;
+            // On prefere les cartes exterieures (avec placements de combat) a celles des maisons et interieurs
+            int score = (map.getPlaces() != null && !map.getPlaces().isEmpty() ? 2 : 0) + (best == null || id < best.getId() ? 1 : 0);
+            if (score > bestScore) { best = map; bestScore = score; }
+        }
+        if (best == null) { player.sendMessage("Impossible de voyager vers [" + x + "," + y + "]."); return; }
+        if (best.getId() == player.getCurMap().getId()) return;
+        int cell = best.getRandomFreeCellId();
+        if (best.getCase(cell) == null) { player.sendMessage("Impossible de voyager vers [" + x + "," + y + "]."); return; }
+        lastTravel.put(player.getId(), now);
+        player.teleport(best.getId(), cell);
     }
 
     // Trousseau de cles (10207) : toutes les cles de donjon, jamais consommees (cf. Dungeons.lua)
@@ -253,6 +282,9 @@ public final class Atrion {
             case ".points":
                 player.sendMessage("Tu as <b>" + data().points(player.getId()) + "</b> points de boutique. Voir <b>.boutique</b>.");
                 return true;
+            case ".bonus":
+            case ".buffs":
+                return commandBuffs(player);
             case ".boutique":
                 return commandShop(player);
             case ".acheter":
@@ -435,12 +467,49 @@ public final class Atrion {
     // ------------------------------------------------------------------ Boutique de points
 
     /** {nom, templateId, prix} */
+    private static final int BUFF_XP_ID = -1, BUFF_DROP_ID = -2;
     private static final Object[][] SHOP = {
             {"Puissant Parchemin de Force", 797, 15}, {"Puissant Parchemin d'Intelligence", 817, 15},
             {"Puissant Parchemin de Chance", 814, 15}, {"Puissant Parchemin d'Agilite", 801, 15},
             {"Puissant Parchemin de Vitalite", 810, 15}, {"Puissant Parchemin de Sagesse", 805, 20},
             {"Parchemin de Sorts (+1 point de sort)", 684, 40},
+            {"Potion d'XP x2 (1 heure)", BUFF_XP_ID, 25},
+            {"Potion de butin x2 (1 heure)", BUFF_DROP_ID, 25},
     };
+
+    // ------------------------------------------------------------------ Potions (bonus temporaires)
+    private static final long BUFF_DURATION_MS = 3600_000L;
+
+    private static String buffKey(int id) { return id == BUFF_XP_ID ? "xp" : "drop"; }
+
+    private static long buffRemaining(Player player, String buff) {
+        if (player == null || data() == null) return 0;
+        return Math.max(0, data().buffUntil(player.getId(), buff) - System.currentTimeMillis());
+    }
+
+    public static double xpMultiplier(Player player) { return buffRemaining(player, "xp") > 0 ? 2.0 : 1.0; }
+
+    public static double dropMultiplier(Player player) { return buffRemaining(player, "drop") > 0 ? 2.0 : 1.0; }
+
+    private static String formatDuration(long ms) {
+        long min = (ms + 59_999) / 60_000;
+        return min >= 60 ? (min / 60) + " h " + String.format("%02d", min % 60) + " min" : min + " min";
+    }
+
+    private static void giveBuff(Player player, int id, int hours) {
+        String key = buffKey(id);
+        long now = System.currentTimeMillis();
+        long until = Math.max(now, data().buffUntil(player.getId(), key)) + hours * BUFF_DURATION_MS;
+        data().setBuff(player.getId(), key, until);
+        player.sendMessage("<b>" + (id == BUFF_XP_ID ? "XP x2" : "Butin x2") + "</b> actif pendant encore <b>" + formatDuration(until - now) + "</b>.");
+    }
+
+    private static boolean commandBuffs(Player player) {
+        long xp = buffRemaining(player, "xp"), drop = buffRemaining(player, "drop");
+        player.sendMessage("Bonus actifs : XP x2 " + (xp > 0 ? "<b>" + formatDuration(xp) + "</b>" : "aucun")
+                + ", butin x2 " + (drop > 0 ? "<b>" + formatDuration(drop) + "</b>" : "aucun") + ".");
+        return true;
+    }
 
     private static boolean commandShop(Player player) {
         StringBuilder sb = new StringBuilder("<b>Boutique Atrion</b> (tu as " + data().points(player.getId()) + " points) :");
@@ -467,6 +536,14 @@ public final class Atrion {
         }
         int templateId = (Integer) SHOP[index][1];
         int cost = (Integer) SHOP[index][2] * quantity;
+        if (templateId < 0) {
+            if (!data().addPoints(player.getId(), -cost)) {
+                player.sendMessage("Pas assez de points (" + cost + " necessaires, tu en as " + data().points(player.getId()) + ").");
+                return true;
+            }
+            giveBuff(player, templateId, quantity);
+            return true;
+        }
         ObjectTemplate template = World.world.getObjTemplate(templateId);
         if (template == null) {
             player.sendMessage("Objet indisponible.");

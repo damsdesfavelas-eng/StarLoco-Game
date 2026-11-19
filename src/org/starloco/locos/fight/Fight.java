@@ -4823,6 +4823,7 @@ public class Fight {
                     if (player != null) {
                         xpPlayer = FormuleOfficiel.getXp(i, winners, totalXP, nbbonus, getMobGroup() != null ? getMobGroup().getStarBonus() : 0, challXp, lvlMax, lvlMin, lvlLoosers, lvlWinners);
                         xpPlayer = org.starloco.locos.atrion.DungeonTiers.scaleXp(xpPlayer, this.atrionTier); // Atrion
+                        xpPlayer = (long) (xpPlayer * org.starloco.locos.atrion.Atrion.xpMultiplier(player)); // Atrion : potion XP x2
                         XP.set(xpPlayer);
 
                         if (this.getType() == Constant.FIGHT_TYPE_PVT && win == 1) {
@@ -4878,7 +4879,7 @@ public class Fight {
 
 
                             final double jet = Math.random() * 100;
-                            final double chance = drop.getLocalPercent() * prospecting * World.world.getConquestBonus(player) * challengeFactor * starFactor * Config.rateDrop;
+                            final double chance = drop.getLocalPercent() * prospecting * World.world.getConquestBonus(player) * challengeFactor * starFactor * Config.rateDrop * org.starloco.locos.atrion.Atrion.dropMultiplier(player); // Atrion : potion butin x2
                             boolean ok = false;
 
                             switch (drop.getAction()) {
