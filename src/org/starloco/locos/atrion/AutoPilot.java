@@ -130,6 +130,48 @@ public final class AutoPilot {
         return null;
     }
 
+    private static final char[] DIRS = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
+
+    /** Chemin a pied sur une carte (8 directions, memes regles que la validation du serveur). Format client : dir + cellule. */
+    private static String findCellPath(GameMap map, int start, int target, int[] stepCount) {
+        if (start == target) return null;
+        Map<Integer, Integer> prev = new HashMap<>();
+        Map<Integer, Character> via = new HashMap<>();
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        queue.add(start);
+        prev.put(start, -1);
+        while (!queue.isEmpty()) {
+            int c = queue.poll();
+            if (c == target) break;
+            if (c != start && map.data.cellHasMoveEndActions(c)) continue; // le serveur s'arreterait ici
+            for (char d : DIRS) {
+                int n = PathFinding.GetCaseIDFromDirection(c, d, map, false);
+                if (n < 0 || prev.containsKey(n)) continue;
+                GameCase gc = map.getCase(n);
+                if (gc == null || !gc.isWalkable(true, false, target)) continue;
+                prev.put(n, c);
+                via.put(n, d);
+                queue.add(n);
+            }
+        }
+        if (!prev.containsKey(target)) return null;
+        LinkedList<Integer> cells = new LinkedList<>();
+        for (int c = target; c != start; c = prev.get(c)) cells.addFirst(c);
+        stepCount[0] = cells.size();
+        StringBuilder sb = new StringBuilder();
+        char lastDir = 0;
+        int lastCell = -1;
+        for (int c : cells) {
+            char d = via.get(c);
+            if (d != lastDir && lastDir != 0)
+                sb.append(lastDir).append(World.world.getCryptManager().cellID_To_Code(lastCell));
+            lastDir = d;
+            lastCell = c;
+        }
+        sb.append(lastDir).append(World.world.getCryptManager().cellID_To_Code(lastCell));
+        return sb.toString();
+    }
+
     private static void schedule(Route route, long delay) {
         TimerWaiter.addNext(() -> {
             try {
@@ -179,18 +221,18 @@ public final class AutoPilot {
         }
         if (route.retries++ >= 3) { stop(route, player, "Chemin bloque, deplacement automatique arrete."); return; }
 
-        List<GameCase> cells = PathFinding.getShortestPathBetween(map, cell.getId(), step[1], 0);
-        String path = PathFinding.getShortestStringPathBetween(map, cell.getId(), step[1], 0);
-        if (path == null || path.length() <= 3 || cells == null || cells.isEmpty()) { stop(route, player, "Chemin introuvable, deplacement automatique arrete."); return; }
+        int[] steps = new int[1];
+        String path = findCellPath(map, cell.getId(), step[1], steps);
+        if (path == null || path.isEmpty()) { stop(route, player, "Chemin introuvable, deplacement automatique arrete."); return; }
 
         GameClient client = player.getGameClient();
         injecting.set(true);
         try {
-            client.parsePacket("GA001" + path.substring(3));
+            client.parsePacket("GA001" + path);
         } finally {
             injecting.set(false);
         }
-        route.waitUntil = now + cells.size() * MS_PER_CELL + 700;
+        route.waitUntil = now + steps[0] * MS_PER_CELL + 700;
         schedule(route, 600);
     }
 }
