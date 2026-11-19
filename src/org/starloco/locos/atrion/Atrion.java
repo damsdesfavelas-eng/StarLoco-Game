@@ -63,6 +63,82 @@ public final class Atrion {
         } catch (Exception e) {
             World.world.logger.error("Atrion: familier", e);
         }
+        try {
+            ensureKeychain(player);
+        } catch (Exception e) {
+            World.world.logger.error("Atrion: trousseau", e);
+        }
+    }
+
+    /** Estimation de l'XP en solo pour un groupe de monstres (meme formule que FormuleOfficiel, solo). */
+    public static long estimateSoloXp(Player player, org.starloco.locos.entity.monster.MonsterGroup group, int tier) {
+        if (player == null || group == null) return 0;
+        long groupXp = 0;
+        int mobLevels = 0;
+        for (MonsterGrade grade : group.getMobs().values()) {
+            if (grade == null) continue;
+            groupXp += grade.getBaseXp();
+            mobLevels += grade.getLevel();
+        }
+        int lvl = Math.max(1, player.getLevel());
+        if (mobLevels <= 0) return 0;
+        double sagesse = lvl * 0.5 + player.getTotalStats(true).getEffect(Constant.STATS_ADD_SAGE);
+        double ratio = (double) Math.max(lvl, mobLevels) / (double) Math.min(lvl, mobLevels);
+        double nvGrp = ratio < 3.0 ? 1 : 1 / ratio;
+        int star = group.getStarBonus();
+        double total = (1 + sagesse / 100) * (1 + (star / 100)) * (0.5 + 0.6) * nvGrp * groupXp
+                * (lvl != 199 ? org.starloco.locos.kernel.Config.rateXp : 1) * World.world.getConquestBonus(player);
+        if (lvl != 199 && player.getAccount() != null && player.getAccount().isSubscribeWithoutCondition())
+            total *= 1.2;
+        long xp = DungeonTiers.scaleXp((long) total, tier);
+        if (player.getLevel() >= Prestige.maxLevel(player)) return 0;
+        return xp;
+    }
+
+    public static void announceXp(Player player, org.starloco.locos.entity.monster.MonsterGroup group, int tier) {
+        try {
+            long xp = estimateSoloXp(player, group, tier);
+            player.sendMessage("XP estimee (solo, sans challenge) : <b>" + String.format(Locale.FRANCE, "%,d", xp).replace('\u202f', ' ').replace('\u00a0', ' ') + "</b>");
+        } catch (Exception e) {
+            World.world.logger.error("Atrion: estimation XP", e);
+        }
+    }
+
+    // Trousseau de cles (10207) : toutes les cles de donjon, jamais consommees (cf. Dungeons.lua)
+    private static final int KEYCHAIN_TEMPLATE = 10207;
+    private static final int[] DUNGEON_KEYS = {1568, 1569, 1570, 6884, 7309, 7310, 7311, 7312, 7557, 7908, 7918,
+            7926, 7927, 8073, 8135, 8139, 8143, 8156, 8436, 8437, 8438, 8439, 8545, 9247, 9248, 9254, 11474, 11475};
+
+    private static String keychainValue() {
+        StringBuilder sb = new StringBuilder();
+        for (int key : DUNGEON_KEYS) {
+            if (sb.length() > 0) sb.append(',');
+            sb.append(Integer.toHexString(key));
+        }
+        return sb.toString();
+    }
+
+    private static void ensureKeychain(Player player) {
+        String value = keychainValue();
+        GameObject keychain = null;
+        for (GameObject item : player.getItems().values())
+            if (item != null && item.getTemplate().getId() == KEYCHAIN_TEMPLATE) { keychain = item; break; }
+        if (keychain != null) {
+            if (!value.equals(keychain.getTxtStat().get(Constant.STATS_NAME_DJ))) {
+                keychain.getTxtStat().put(Constant.STATS_NAME_DJ, value);
+                DatabaseManager.get(ObjectData.class).update(keychain);
+            }
+            return;
+        }
+        ObjectTemplate template = World.world.getObjTemplate(KEYCHAIN_TEMPLATE);
+        if (template == null) return;
+        keychain = template.createNewItem(1, false);
+        if (keychain == null) return;
+        keychain.getTxtStat().put(Constant.STATS_NAME_DJ, value);
+        DatabaseManager.get(ObjectData.class).update(keychain);
+        player.addItem(keychain, false);
+        World.world.addGameObject(keychain);
+        DatabaseManager.get(PlayerData.class).update(player);
     }
 
     /** Relit les droits en base et les etend a tous les personnages d'un compte admin. */

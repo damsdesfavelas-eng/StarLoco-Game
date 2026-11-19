@@ -280,6 +280,7 @@ public class Fight {
         this.atrionTier = org.starloco.locos.atrion.DungeonTiers.tierFor(perso, rpMap.getId());
         if (this.atrionTier > 0)
             perso.sendMessage("Combat de palier <b>" + org.starloco.locos.atrion.DungeonTiers.NAMES[this.atrionTier] + "</b> : monstres renforces, XP et butin ameliores.");
+        org.starloco.locos.atrion.Atrion.announceXp(perso, group, this.atrionTier);
         this.init0 = Fighter.NewPlayer(this, perso);
         this.team0.put(perso.getId(), this.init0);
         for (Entry<Integer, MonsterGrade> entry : group.getMobs().entrySet()) {

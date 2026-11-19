@@ -1118,29 +1118,25 @@ public class JobAction {
             boolean canFM = true;
             int statMax = getStatBaseMaxs(objectFm.getTemplate(), statsObjectFm), actualJet = getActualJet(objectFm, statsObjectFm);
 
-            if (actualJet > statMax) {
-                x = 0.8F;
-                int overPerEffect = (int) getOverPerEffet(Integer.parseInt(statsObjectFm, 16));
-                //if (statMax == 0)
-                if (actualJet >= (statMax + overPerEffect))
+            // Atrion : overs selon la rarete, 2 lignes overmax maximum, FM possible des le niveau 1
+            int effectIdAtrion = Integer.parseInt(statsObjectFm, 16);
+            int baseMaxAtrion = org.starloco.locos.atrion.ForgeOver.baseMax(objectFm, effectIdAtrion, statMax);
+            if (actualJet + Math.max(1, statsAdd) > baseMaxAtrion) {
+                if (actualJet > baseMaxAtrion) x = 0.8F;
+                int effectId = effectIdAtrion;
+                int cap = org.starloco.locos.atrion.ForgeOver.cap(objectFm, effectId, statMax, (int) getOverPerEffet(effectId));
+                if (actualJet >= cap)
                     canFM = false;
-                if(Integer.parseInt(statsObjectFm, 16) == 111) {
-                    if(objectFm.isOverFm2(111, 1))
-                        if(!canFM)
-                            canFM = true;
-                } else if(Integer.parseInt(statsObjectFm, 16) == 128) {
-                    if(objectFm.isOverFm2(128, 1))
-                        if(!canFM)
-                            canFM = true;
-                }
+                else if (!org.starloco.locos.atrion.ForgeOver.canAddOverLine(objectFm, effectId))
+                    canFM = false;
+                if (!canFM && this.player != null)
+                    this.player.sendMessage("Forgemagie : limite atteinte (" + (actualJet >= cap ? "over max " + cap : "2 lignes overmax max") + ").");
             }
-            if (lvlJob < (int) Math.floor(template.getLevel() / 2))
-                canFM = false; // On rate le FM si le m�tier n'est pas suffidant
 
             int diff = (int) Math.abs((currentTotalBase * 1.3f) - currentWeightTotal);
 
             if (canFM) {
-                chances = Formulas.chanceFM(currentTotalBase, currentMinBase, currentWeightTotal, currentWeightStats, poid, diff, coef, statMax, getStatBaseMins(objectFm.getTemplate(), statsObjectFm), currentStats(objectFm, statsObjectFm), x, bonusRune, statsAdd);
+                chances = Formulas.chanceFM(currentTotalBase, currentMinBase, currentWeightTotal, currentWeightStats, poid, diff, coef, baseMaxAtrion, getStatBaseMins(objectFm.getTemplate(), statsObjectFm), currentStats(objectFm, statsObjectFm), x, bonusRune, statsAdd);
             } else {// Si l'objet est au dessus de l'over (impossible statistiquement ... mais evite un gelano 2 PA :p)
                 chances.add(0, 0);
                 chances.add(1, 0);

@@ -41,7 +41,8 @@ function useKeyChainFor(player, keyID)
     local item = player:getItem(keychainTemplateID, 1)
     if not item then return false end
     -- Keys are stored as hex value in keychain
-    return item:consumeTxtStat(player, keychainStatID, hex(keyID))
+    -- Atrion : le trousseau n'est jamais consomme
+    return item:hasTxtStat(keychainStatID, hex(keyID))
 end
 
 ---@param player Player
