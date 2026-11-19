@@ -64,6 +64,11 @@ public final class Atrion {
             World.world.logger.error("Atrion: familier", e);
         }
         try {
+            ensureThemedDrops();
+        } catch (Exception e) {
+            World.world.logger.error("Atrion: drops de panoplie", e);
+        }
+        try {
             ensureKeychain(player);
         } catch (Exception e) {
             World.world.logger.error("Atrion: trousseau", e);
@@ -107,6 +112,38 @@ public final class Atrion {
     // ------------------------------------------------------------------ Voyage par double-clic sur la carte
     public static void travelTo(Player player, int x, int y) {
         AutoPilot.start(player, x, y);
+    }
+
+    // ------------------------------------------------------------------ Drops de panoplie lies aux monstres
+    private static volatile boolean themedDropsLoaded = false;
+
+    /** Ajoute les objets de panoplie a leur monstre (ex : panoplie du Chene Mou sur le Chene Mou). */
+    public static void ensureThemedDrops() {
+        if (themedDropsLoaded) return;
+        synchronized (Atrion.class) {
+            if (themedDropsLoaded) return;
+            int added = 0;
+            try (java.io.BufferedReader r = java.nio.file.Files.newBufferedReader(java.nio.file.Paths.get("scripts/data/atrion/themed_drops.txt"), java.nio.charset.StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = r.readLine()) != null) {
+                    if (line.isEmpty() || line.startsWith("#")) continue;
+                    String[] p = line.trim().split("\\s+");
+                    if (p.length < 8) continue;
+                    Monster monster = World.world.getMonstre(Integer.parseInt(p[0]));
+                    int itemId = Integer.parseInt(p[1]);
+                    if (monster == null || World.world.getObjTemplate(itemId) == null) continue;
+                    if (monster.getDrops().stream().anyMatch(d -> d.getObjectId() == itemId)) continue;
+                    ArrayList<Double> percents = new ArrayList<>();
+                    for (int i = 2; i < 7; i++) percents.add(Double.parseDouble(p[i]));
+                    monster.addDrop(new World.Drop(itemId, percents, Integer.parseInt(p[7]), -1, -1, ""));
+                    added++;
+                }
+            } catch (Exception e) {
+                World.world.logger.error("Atrion: drops de panoplie illisibles", e);
+            }
+            World.world.logger.info("Atrion: " + added + " drops de panoplie ajoutes aux monstres.");
+            themedDropsLoaded = true;
+        }
     }
 
     // Trousseau de cles (10207) : toutes les cles de donjon, jamais consommees (cf. Dungeons.lua)
@@ -444,13 +481,88 @@ public final class Atrion {
 
     /** {nom, templateId, prix} */
     private static final int BUFF_XP_ID = -1, BUFF_DROP_ID = -2;
+    /** {nom, templateId (negatif = potion), prix, categorie} - genere depuis la liste de la boutique */
+    private static final String[] SHOP_CATEGORIES = {"Potions", "Parchemins", "Coiffes", "Capes", "Polykromes (aux couleurs de ton personnage)", "Objets vivants et apparence", "Déguisements", "Boucliers et ballons"};
     private static final Object[][] SHOP = {
-            {"Puissant Parchemin de Force", 797, 15}, {"Puissant Parchemin d'Intelligence", 817, 15},
-            {"Puissant Parchemin de Chance", 814, 15}, {"Puissant Parchemin d'Agilite", 801, 15},
-            {"Puissant Parchemin de Vitalite", 810, 15}, {"Puissant Parchemin de Sagesse", 805, 20},
-            {"Parchemin de Sorts (+1 point de sort)", 684, 40},
-            {"Potion d'XP x2 (1 heure)", BUFF_XP_ID, 25},
-            {"Potion de butin x2 (1 heure)", BUFF_DROP_ID, 25},
+            {"Potion d'XP x2 (1 heure)", BUFF_XP_ID, 25, 0},
+            {"Potion de butin x2 (1 heure)", BUFF_DROP_ID, 25, 0},
+            {"Puissant Parchemin de Force", 797, 15, 1},
+            {"Puissant Parchemin d'Intelligence", 817, 15, 1},
+            {"Puissant Parchemin de Chance", 814, 15, 1},
+            {"Puissant Parchemin d'Agilité", 801, 15, 1},
+            {"Puissant Parchemin de Vitalité", 810, 15, 1},
+            {"Puissant Parchemin de Sagesse", 805, 20, 1},
+            {"Parchemin de sort (+1 point de sort)", 684, 40, 1},
+            {"Chapeau du Marié", 6660, 30, 2},
+            {"Chapeau de la Mariée", 6662, 30, 2},
+            {"Cache Oreilles", 6802, 30, 2},
+            {"Casque des Mercenaires d'Astrub", 6863, 30, 2},
+            {"Maskananas", 7422, 30, 2},
+            {"Coiffe du Champion", 8069, 30, 2},
+            {"Chapeau du Papa Nowel", 8334, 30, 2},
+            {"Perruque du Poolay", 8828, 30, 2},
+            {"Crack Sparrow's Own Withered Hat", 8854, 30, 2},
+            {"Chapeau de la Sain Ballotin", 9471, 30, 2},
+            {"Couronne Koninginnedag", 10414, 30, 2},
+            {"Kaskwette", 9653, 30, 2},
+            {"Coiffe de la Denrée", 10188, 30, 2},
+            {"Coiffe du Mominotor", 8325, 50, 2},
+            {"Cape Brâkmarienne", 2118, 30, 3},
+            {"Cape Bontarienne", 2119, 30, 3},
+            {"Cape Banale", 6800, 30, 3},
+            {"Cape Hivernale", 6801, 30, 3},
+            {"Cape des Mercenaires d'Astrub", 6886, 30, 3},
+            {"Capananas", 7999, 30, 3},
+            {"Cape du Champion", 8068, 30, 3},
+            {"Cape du Papa Nowel", 8333, 30, 3},
+            {"La cape rouge", 8521, 30, 3},
+            {"Ailes en bois améliorées", 8919, 30, 3},
+            {"Cape du Mominotor", 8416, 50, 3},
+            {"Bandeau Komintot Polykrome", 11476, 80, 4},
+            {"Champcoiffe Polykrome", 11478, 80, 4},
+            {"Toady Polykrome", 11481, 80, 4},
+            {"Dora Polykrome", 11483, 80, 4},
+            {"Dantgoule Polykrome", 11484, 80, 4},
+            {"Le Oiram Polykrome", 11486, 80, 4},
+            {"Coiffe du Flib Polykrome", 11488, 80, 4},
+            {"Potion de changement des couleurs", 10861, 60, 4},
+            {"Cape Obvijevan", 9233, 60, 5},
+            {"Chapeau Obvijevan", 9234, 60, 5},
+            {"Amulette Obvijevan", 9255, 60, 5},
+            {"Anneau Obvijevan", 9256, 60, 5},
+            {"Cape du Valeureux", 12151, 60, 5},
+            {"Heaume du Valeureux", 12152, 60, 5},
+            {"Coiffe Belliciste", 12844, 60, 5},
+            {"Cape Belliciste", 12845, 60, 5},
+            {"Mimibiote", 4, 50, 5},
+            {"Costume Iopesque", 2211, 40, 6},
+            {"Costume Xeloresque", 2212, 40, 6},
+            {"Costume Sadidesque", 2213, 40, 6},
+            {"Costume Fecaesque", 2217, 40, 6},
+            {"Costume Eniripsesque", 2219, 40, 6},
+            {"Costume Enutrofesque", 2221, 40, 6},
+            {"Costume Sacriesque", 2223, 40, 6},
+            {"Costume Sramesque", 2225, 40, 6},
+            {"Costume Osamodesque", 2227, 40, 6},
+            {"Costume Ecaflipesque", 2229, 40, 6},
+            {"Costume Craesque", 2231, 40, 6},
+            {"Costume Bontesque", 2236, 40, 6},
+            {"Costume Brâkmaresque", 2237, 40, 6},
+            {"Costume Roublardesque", 2346, 40, 6},
+            {"Bouclier trophée du Dark Vlad", 10158, 30, 7},
+            {"Bouclier trophée du Moon", 10159, 30, 7},
+            {"Bouclier trophée du Chêne Mou", 10160, 30, 7},
+            {"Bouclier trophée du Dragon Cochon", 10161, 30, 7},
+            {"Bouclier trophée du Minotoror", 10162, 30, 7},
+            {"Bouclier trophée du Kimbo", 10163, 30, 7},
+            {"Bouclier trophée du Wa Wabbit", 10164, 30, 7},
+            {"Bouclier trophée du Koulosse", 10165, 30, 7},
+            {"Bouclier trophée du Sphincter Cell", 10166, 30, 7},
+            {"Bouclier trophée du Bworker", 10167, 30, 7},
+            {"Bouclier Pararayon", 9566, 30, 7},
+            {"Bouclier hispanique", 10073, 30, 7},
+            {"Ballon Jaune Magique", 8430, 15, 7},
+            {"Ballon Rouge Magique", 8435, 15, 7},
     };
 
     // ------------------------------------------------------------------ Potions (bonus temporaires)
@@ -489,8 +601,12 @@ public final class Atrion {
 
     private static boolean commandShop(Player player) {
         StringBuilder sb = new StringBuilder("<b>Boutique Atrion</b> (tu as " + data().points(player.getId()) + " points) :");
-        for (int i = 0; i < SHOP.length; i++)
+        int lastCat = -1;
+        for (int i = 0; i < SHOP.length; i++) {
+            int cat = (Integer) SHOP[i][3];
+            if (cat != lastCat) { sb.append("<br/><b>").append(SHOP_CATEGORIES[cat]).append("</b>"); lastCat = cat; }
             sb.append("<br/>").append(i + 1).append(". ").append(SHOP[i][0]).append(" : ").append(SHOP[i][2]).append(" pts");
+        }
         sb.append("<br/>Achat : <b>.acheter numero [quantite]</b>. Points gagnes : 1 par combat gagne (+ palier du donjon), recyclage d'objets rares.");
         player.sendMessage(sb.toString());
         return true;
@@ -869,6 +985,7 @@ public final class Atrion {
     /** Equipements droppables par niveau : ni deja lies a un monstre, ni objets MJ, ni objets sans caracteristiques. */
     private static List<ObjectTemplate> worldEquipment() {
         if (worldEquipment == null) {
+            ensureThemedDrops();
             synchronized (Atrion.class) {
                 if (worldEquipment == null) {
                     Set<Integer> monsterDrops = new HashSet<>();
