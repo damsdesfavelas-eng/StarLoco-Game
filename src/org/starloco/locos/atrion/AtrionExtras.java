@@ -386,6 +386,7 @@ public final class AtrionExtras {
         try { publishStatus(); } catch (Throwable t) { World.world.logger.error("Atrion: etat public", t); }
         if (World.world.getOnlinePlayers().isEmpty()) return;
         AtrionEvents.tick();
+        try { AtrionArena.tryMatch(); } catch (Throwable t) { World.world.logger.error("Atrion: arene", t); }
         try { AtrionMissions.tick(); } catch (Throwable t) { World.world.logger.error("Atrion: semaine", t); }
         boolean happy = isHappyHour();
         if (happy != lastHappy) {

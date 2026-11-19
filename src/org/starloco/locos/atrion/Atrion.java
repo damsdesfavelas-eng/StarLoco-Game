@@ -337,6 +337,10 @@ public final class Atrion {
                 if (player.getGroup() == null) return false; // admin : lancer une invasion
                 player.sendMessage(AtrionEvents.spawnInvasion() ? "Invasion lancee." : "Aucune carte trouvee pour l'invasion.");
                 return true;
+            case ".arene":
+            case ".arena":
+            case ".kolizeum":
+                return AtrionArena.command(player, msg.trim().substring(cmd.length()).trim());
             case ".missions":
             case ".mission":
                 return AtrionMissions.commandMissions(player);
@@ -359,7 +363,7 @@ public final class Atrion {
                         + "<br/>- Butin : .drops &lt;monstre ou objet&gt;, .recycler, .ameliorer, .craft &lt;metier&gt;, .hdv"
                         + "<br/>- Boutique : .points, .boutique, .acheter, .bonus"
                         + "<br/>- Quotidien : .missions, .chasse, .quotidien, .profil, .succes, .semaine"
-                        + "<br/>- Evenements : .r &lt;reponse&gt; (quiz), .tombola, .infos"
+                        + "<br/>- Evenements : .arene (1 contre 1), .r &lt;reponse&gt; (quiz), .tombola, .infos"
                         + "<br/>- Divers : .vie, .parcho, .classement"
                         + "<br/>- StarLoco : .maitre (ton groupe suit le chef), .deblo, .all, .groupe, .transfert, .savepos, .start");
                 return true;

@@ -4811,6 +4811,10 @@ public class Fight {
 
                 final Player player = i.getPlayer();
 
+                if (player != null && getType() == Constant.FIGHT_TYPE_CHALLENGE) { // Atrion : arene
+                    org.starloco.locos.atrion.AtrionArena.onChallengeEnd(this);
+                    org.starloco.locos.atrion.AtrionArena.onChallengeWin(this, player);
+                }
                 if (player != null && getType() != Constant.FIGHT_TYPE_CHALLENGE)
                     player.calculTurnCandy();
                 if (getType() == Constant.FIGHT_TYPE_PVT || getType() == Constant.FIGHT_TYPE_PVM || getType() == Constant.FIGHT_TYPE_CHALLENGE || getType() == Constant.FIGHT_TYPE_DOPEUL) {
