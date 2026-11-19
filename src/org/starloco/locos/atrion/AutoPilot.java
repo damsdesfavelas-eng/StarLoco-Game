@@ -30,6 +30,24 @@ public final class AutoPilot {
     /** carte -> liste de {cellule de sortie, carte cible} */
     private static volatile Map<Integer, List<int[]>> links;
     private static final Map<Integer, Route> active = new ConcurrentHashMap<>();
+    /** Cartes que le client sait afficher (scripts/data/atrion/client_maps.txt). Vide = pas de filtre. */
+    private static volatile Set<Integer> clientMaps;
+
+    private static Set<Integer> clientMaps() {
+        if (clientMaps == null) {
+            Set<Integer> set = new HashSet<>();
+            try {
+                for (String line : Files.readAllLines(Paths.get("scripts/data/atrion/client_maps.txt"), StandardCharsets.UTF_8)) {
+                    line = line.trim();
+                    if (!line.isEmpty() && !line.startsWith("#")) set.add(Integer.parseInt(line));
+                }
+            } catch (Exception e) {
+                World.world.logger.warn("Atrion: liste des cartes du client absente, pas de filtre");
+            }
+            clientMaps = set;
+        }
+        return clientMaps;
+    }
     private static final ThreadLocal<Boolean> injecting = ThreadLocal.withInitial(() -> false);
 
     private static final class Route {
@@ -96,6 +114,7 @@ public final class AutoPilot {
         int superArea = Optional.ofNullable(current.getArea()).map(org.starloco.locos.area.Area::getSuperArea).orElse(-1);
         Set<Integer> targets = new HashSet<>(World.world.getMapIdByPosInSuperArea(x, y, superArea));
         targets.removeIf(DungeonTiers::isDungeonMap);
+        if (!clientMaps().isEmpty()) targets.removeIf(id -> !clientMaps().contains(id));
         if (targets.isEmpty()) { player.sendMessage("Destination [" + x + "," + y + "] inconnue."); return; }
 
         List<int[]> steps = findRoute(current.getId(), targets);
@@ -130,6 +149,7 @@ public final class AutoPilot {
             for (int[] link : graph.getOrDefault(map, Collections.emptyList())) {
                 int next = link[1];
                 if (previous.containsKey(next) || DungeonTiers.isDungeonMap(next) || World.world.getMap(next) == null) continue;
+                if (!clientMaps().isEmpty() && !clientMaps().contains(next)) continue; // carte absente du client
                 previous.put(next, new int[]{map, link[0]});
                 queue.add(next);
             }
