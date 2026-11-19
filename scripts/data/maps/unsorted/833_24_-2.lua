@@ -15,6 +15,7 @@ map.capabilities = 36
 map.mobGroupsCount = 3
 map.mobGroupsMaxSize = 8
 map.npcs = {
+	[99003] = {155, 1}, -- Atrion : passeur Wabbit
 	[136] = {182, 1},
 }
 -- '0;0;0;0;0;0;0' forbiddens -> capabilities ? Or script ?

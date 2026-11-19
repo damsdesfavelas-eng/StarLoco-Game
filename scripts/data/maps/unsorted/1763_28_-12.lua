@@ -11,6 +11,9 @@ local map = MapDef(
 )
 
 map.positions = "bPb4chcwedeseGeU|cNdtdEeLeNePfFf-"
+map.npcs = {
+	[99003] = {316, 1}, -- Atrion : passeur Wabbit
+}
 map.capabilities = 36
 map.mobGroupsCount = 3
 map.mobGroupsMaxSize = 8
