@@ -250,6 +250,13 @@ public class SPlayer extends DefaultUserdata<Player> {
     //endregion
 
     //region Dialogs
+    /** Atrion : execute une commande Atrion (.prestige, .points, .acheter ...) depuis un script de PNJ. */
+    @SuppressWarnings("unused")
+    private static void atrion(Player p, ArgumentIterator args) {
+        String cmd = args.nextString().toString();
+        org.starloco.locos.atrion.Atrion.handleCommand(p, cmd);
+    }
+
     @SuppressWarnings("unused")
     private static void ask(Player p, ArgumentIterator args) {
         int question = args.nextInt();

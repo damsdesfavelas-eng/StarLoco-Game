@@ -13,7 +13,9 @@ local map = MapDef(
 map.positions = "dEdTd7eiejekexey|fMfNf0f1f2gdgrgG"
 map.capabilities = 98
 map.npcs = {
-    [537] = {350, 1}
+    [537] = {350, 1},
+    [99001] = {339, 1}, -- Atrion : Ganymede (prestige)
+    [99002] = {342, 1}, -- Atrion : Marchand de la boutique
 }
 
 -- '1;1;1;0;0;0;0' forbiddens -> capabilities ? Or script ?
