@@ -38,6 +38,52 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
         return (int) flags.stream().filter(f -> f.startsWith(p)).count();
     }
 
+    /** Toutes les valeurs d'une cle de bonus/compteur, par personnage. */
+    public Map<Integer, Long> buffsByKey(String key) {
+        ensureLoaded();
+        Map<Integer, Long> out = new java.util.HashMap<>();
+        String suffix = ":" + key;
+        buffs.forEach((k, v) -> {
+            if (k.endsWith(suffix)) {
+                try { out.put(Integer.parseInt(k.substring(0, k.length() - suffix.length())), v); } catch (NumberFormatException ignored) { }
+            }
+        });
+        return out;
+    }
+
+    /** Nombre de drapeaux par personnage pour un prefixe. */
+    public Map<Integer, Integer> flagCounts(String prefix) {
+        ensureLoaded();
+        Map<Integer, Integer> out = new java.util.HashMap<>();
+        for (String f : flags) {
+            int i = f.indexOf(':');
+            if (i < 0 || !f.startsWith(prefix, i + 1)) continue;
+            try { out.merge(Integer.parseInt(f.substring(0, i)), 1, Integer::sum); } catch (NumberFormatException ignored) { }
+        }
+        return out;
+    }
+
+    public Map<Integer, Integer> allPoints() {
+        ensureLoaded();
+        return new java.util.HashMap<>(points);
+    }
+
+    /** Noms des personnages (y compris hors ligne). */
+    public Map<Integer, String> names(java.util.Collection<Integer> ids) {
+        Map<Integer, String> out = new java.util.HashMap<>();
+        if (ids == null || ids.isEmpty()) return out;
+        StringBuilder in = new StringBuilder();
+        for (Integer id : ids) { if (in.length() > 0) in.append(','); in.append(id.intValue()); }
+        try {
+            getData("SELECT id, name FROM `world_players` WHERE id IN (" + in + ");", result -> {
+                while (result.next()) out.put(result.getInt("id"), result.getString("name"));
+            });
+        } catch (SQLException e) {
+            logger.error("Atrion: noms des personnages", e);
+        }
+        return out;
+    }
+
     public int points(int playerId) {
         ensureLoaded();
         return points.getOrDefault(playerId, 0);

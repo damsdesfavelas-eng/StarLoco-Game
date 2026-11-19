@@ -4999,6 +4999,9 @@ public class Fight {
                         if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
                             org.starloco.locos.atrion.Atrion.rollBonusDrops(this.monsterGroup.getMobs().values(), i, objectsWon, this.atrionTier,
                                     org.starloco.locos.atrion.Atrion.isDungeonChallengeWon(this.atrionTier, this.monsterGroup.getMobs().values(), this.atrionTurnCalls, this.team0.size() + this.team1.size()));
+                        // Atrion : invasion
+                        if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
+                            org.starloco.locos.atrion.AtrionEvents.onGroupDefeated(this.monsterGroup, player);
                         /** Drop Chasseur **/
                         if (player != null) {
                             ArrayList<Drop> temporary = new ArrayList<>(dropsMeats);

@@ -317,6 +317,26 @@ public final class Atrion {
                 return DungeonTiers.handleCommand(player, msg.trim().substring(cmd.length()).trim());
             case ".craft":
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
+            case ".r":
+            case ".reponse":
+                return AtrionEvents.commandAnswer(player, msg.trim().substring(cmd.length()).trim());
+            case ".tombola":
+                return AtrionEvents.commandLottery(player, msg.trim().substring(cmd.length()).trim());
+            case ".infos":
+            case ".info":
+                return AtrionEvents.commandInfos(player);
+            case ".vie":
+                return AtrionEvents.commandHeal(player);
+            case ".parcho":
+                return AtrionEvents.commandParcho(player, msg.trim().substring(cmd.length()).trim());
+            case ".classement":
+                return AtrionEvents.commandRanking(player, msg.trim().substring(cmd.length()).trim());
+            case ".succes":
+                return AtrionAchievements.command(player);
+            case ".invasion":
+                if (player.getGroup() == null) return false; // admin : lancer une invasion
+                player.sendMessage(AtrionEvents.spawnInvasion() ? "Invasion lancee." : "Aucune carte trouvee pour l'invasion.");
+                return true;
             case ".profil":
             case ".moi":
                 return AtrionExtras.commandProfile(player);
@@ -333,7 +353,10 @@ public final class Atrion {
                         + "<br/>- Progression : .prestige, .palier, .restat, .top"
                         + "<br/>- Butin : .drops &lt;monstre ou objet&gt;, .recycler, .ameliorer, .craft &lt;metier&gt;, .hdv"
                         + "<br/>- Boutique : .points, .boutique, .acheter, .bonus"
-                        + "<br/>- Quotidien : .chasse, .quotidien, .profil");
+                        + "<br/>- Quotidien : .chasse, .quotidien, .profil, .succes"
+                        + "<br/>- Evenements : .r &lt;reponse&gt; (quiz), .tombola, .infos"
+                        + "<br/>- Divers : .vie, .parcho, .classement"
+                        + "<br/>- StarLoco : .maitre (ton groupe suit le chef), .deblo, .all, .groupe, .transfert, .savepos, .start");
                 return true;
             default:
                 return false;

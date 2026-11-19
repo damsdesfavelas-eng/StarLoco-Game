@@ -96,6 +96,11 @@ public final class AtrionExtras {
         } catch (Exception e) {
             World.world.logger.error("Atrion: recompense quotidienne", e);
         }
+        try {
+            AtrionEvents.onJoin(player);
+        } catch (Exception e) {
+            World.world.logger.error("Atrion: evenements a la connexion", e);
+        }
         org.starloco.locos.util.TimerWaiter.addNext(() -> {
             try {
                 if (!player.isOnline()) return;
@@ -290,6 +295,11 @@ public final class AtrionExtras {
     /** Appele a la fin d'un combat PvM gagne, pour chaque joueur gagnant. */
     public static void onPvmWin(Player player, Collection<MonsterGrade> defeated) {
         if (player == null || defeated == null) return;
+        try {
+            AtrionAchievements.increment(player, "c_win");
+        } catch (Exception ex) {
+            World.world.logger.error("Atrion: compteur de victoires", ex);
+        }
         if (BESTIARY) {
             try {
                 discover(player, defeated);
@@ -297,8 +307,7 @@ public final class AtrionExtras {
                 World.world.logger.error("Atrion: bestiaire", ex);
             }
         }
-        if (!HUNT) return;
-        try {
+        if (HUNT) try {
             ensureHunt();
             int found = -1;
             for (MonsterGrade g : defeated) {
@@ -306,9 +315,8 @@ public final class AtrionExtras {
                 for (int b = 0; b < BANDS.length; b++)
                     if (huntTargets[b] == g.getTemplate().getId()) found = b;
             }
-            if (found < 0) return;
-            int count = huntCount(player);
-            if (count >= HUNT_MAX_PER_DAY) return;
+            int count = found < 0 ? HUNT_MAX_PER_DAY : huntCount(player);
+            if (count < HUNT_MAX_PER_DAY) {
             int oldMask = huntMask(player);
             int mask = oldMask | (1 << found);
             count++;
@@ -317,13 +325,16 @@ public final class AtrionExtras {
             boolean all = mask == 7 && oldMask != 7;
             if (all) earned += HUNT_BONUS_ALL3;
             data().addPoints(player.getId(), earned);
+            AtrionAchievements.increment(player, "c_hunt");
             final int e = earned, c = count;
             final String name = monsterName(huntTargets[found]);
             org.starloco.locos.util.TimerWaiter.addNext(() -> player.sendMessage("<b>Chasse du jour</b> : " + name + " vaincu, +" + e + " pts"
                     + (all ? " (bonus : les 3 cibles chassees !)" : "") + " (" + c + "/" + HUNT_MAX_PER_DAY + ")."), 1500);
+            }
         } catch (Exception ex) {
             World.world.logger.error("Atrion: chasse du jour", ex);
         }
+        AtrionAchievements.check(player);
     }
 
     public static boolean commandDaily(Player player) {
@@ -373,6 +384,7 @@ public final class AtrionExtras {
 
     private static void tick() {
         if (World.world.getOnlinePlayers().isEmpty()) return;
+        AtrionEvents.tick();
         boolean happy = isHappyHour();
         if (happy != lastHappy) {
             lastHappy = happy;
