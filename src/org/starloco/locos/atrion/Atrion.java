@@ -165,8 +165,30 @@ public final class Atrion {
         }
     }
 
+    /** Remet les bonus du familier de depart (PA, PM, 50 sagesse, 50 prospection) s'ils ont disparu. */
+    private static void repairStarterPets(Player player) {
+        boolean equippedChanged = false;
+        for (GameObject pet : new ArrayList<>(player.getItems().values())) {
+            if (pet == null || pet.getTemplate().getId() != STARTER_PET_TEMPLATE) continue;
+            Map<Integer, Integer> effects = pet.getStats().getEffects();
+            boolean ok = Integer.valueOf(1).equals(effects.get(Constant.STATS_ADD_PA))
+                    && Integer.valueOf(1).equals(effects.get(Constant.STATS_ADD_PM))
+                    && Integer.valueOf(50).equals(effects.get(Constant.STATS_ADD_SAGE))
+                    && Integer.valueOf(50).equals(effects.get(Constant.STATS_ADD_PROS));
+            if (ok) continue;
+            effects.put(Constant.STATS_ADD_PA, 1);
+            effects.put(Constant.STATS_ADD_PM, 1);
+            effects.put(Constant.STATS_ADD_SAGE, 50);
+            effects.put(Constant.STATS_ADD_PROS, 50);
+            DatabaseManager.get(ObjectData.class).update(pet);
+            if (pet.getPosition() != Constant.ITEM_POS_NO_EQUIPED) equippedChanged = true;
+        }
+        if (equippedChanged) player.refreshStats();
+    }
+
     private static void giveStarterPet(Player player) {
         PrestigeData data = data();
+        repairStarterPets(player);
         if (data == null || data.hasFlag(player.getId(), FLAG_PET)) return;
         // Retire l'ancien familier (Mini Champion) que le client n'affichait pas
         for (GameObject old : new ArrayList<>(player.getItems().values()))
