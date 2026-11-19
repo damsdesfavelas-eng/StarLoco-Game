@@ -1943,6 +1943,11 @@ public class Player implements Scripted<SPlayer>, Actor {
         this.verifEquiped();
 
         if (this.getLastFight() == null) {
+            int[] atrionSafe = org.starloco.locos.atrion.AtrionExtras.safeSpawn(this); // Atrion : carte absente du client
+            if (atrionSafe != null) {
+                this.curMap = World.world.getMap(atrionSafe[0]);
+                this.curCell = this.curMap.getCase(atrionSafe[1]);
+            }
             SocketManager.GAME_SEND_MAPDATA(client, this.curMap.getId(), this.curMap.getDate(), this.curMap.getKey());
             SocketManager.GAME_SEND_MAP_FIGHT_COUNT(client, this.getCurMap());
             if (this.getFight() == null) this.curMap.addPlayer(this);

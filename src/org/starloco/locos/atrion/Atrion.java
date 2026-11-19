@@ -73,6 +73,11 @@ public final class Atrion {
         } catch (Exception e) {
             World.world.logger.error("Atrion: trousseau", e);
         }
+        try {
+            AtrionExtras.onJoin(player);
+        } catch (Exception e) {
+            World.world.logger.error("Atrion: contenu quotidien", e);
+        }
     }
 
     /** Estimation de l'XP en solo pour un groupe de monstres (meme formule que FormuleOfficiel, solo). */
@@ -312,9 +317,23 @@ public final class Atrion {
                 return DungeonTiers.handleCommand(player, msg.trim().substring(cmd.length()).trim());
             case ".craft":
                 return commandCraft(player, msg.trim().substring(cmd.length()).trim());
+            case ".profil":
+            case ".moi":
+                return AtrionExtras.commandProfile(player);
+            case ".chasse":
+                return AtrionExtras.commandHunt(player);
+            case ".quotidien":
+            case ".jour":
+                return AtrionExtras.commandDaily(player);
             case ".atrion":
-                player.sendMessage("<b>Commandes Atrion</b> : .prestige, .palier, .zaap, .banque, .hdv, .astrub, .craft &lt;metier&gt;, "
-                        + ".drops &lt;monstre ou objet&gt;, .top, .points, .boutique, .acheter, .recycler, .ameliorer, .restat");
+            case ".aide":
+            case ".help":
+                player.sendMessage("<b>Commandes Atrion</b> :"
+                        + "<br/>- Voyage : .zaap, .astrub, double-clic sur la carte du monde"
+                        + "<br/>- Progression : .prestige, .palier, .restat, .top"
+                        + "<br/>- Butin : .drops &lt;monstre ou objet&gt;, .recycler, .ameliorer, .craft &lt;metier&gt;, .hdv"
+                        + "<br/>- Boutique : .points, .boutique, .acheter, .bonus"
+                        + "<br/>- Quotidien : .chasse, .quotidien, .profil");
                 return true;
             default:
                 return false;
@@ -575,9 +594,9 @@ public final class Atrion {
         return Math.max(0, data().buffUntil(player.getId(), buff) - System.currentTimeMillis());
     }
 
-    public static double xpMultiplier(Player player) { return buffRemaining(player, "xp") > 0 ? 2.0 : 1.0; }
+    public static double xpMultiplier(Player player) { return (buffRemaining(player, "xp") > 0 ? 2.0 : 1.0) * AtrionExtras.xpFactor(); }
 
-    public static double dropMultiplier(Player player) { return buffRemaining(player, "drop") > 0 ? 2.0 : 1.0; }
+    public static double dropMultiplier(Player player) { return (buffRemaining(player, "drop") > 0 ? 2.0 : 1.0) * AtrionExtras.dropFactor(); }
 
     private static String formatDuration(long ms) {
         long min = (ms + 59_999) / 60_000;
@@ -595,7 +614,7 @@ public final class Atrion {
     private static boolean commandBuffs(Player player) {
         long xp = buffRemaining(player, "xp"), drop = buffRemaining(player, "drop");
         player.sendMessage("Bonus actifs : XP x2 " + (xp > 0 ? "<b>" + formatDuration(xp) + "</b>" : "aucun")
-                + ", butin x2 " + (drop > 0 ? "<b>" + formatDuration(drop) + "</b>" : "aucun") + ".");
+                + ", butin x2 " + (drop > 0 ? "<b>" + formatDuration(drop) + "</b>" : "aucun") + ". " + AtrionExtras.bonusLine());
         return true;
     }
 
@@ -948,6 +967,7 @@ public final class Atrion {
             // Points de boutique : 1 par combat gagne, + palier du donjon
             int earned = 1 + Math.max(0, tier);
             data().addPoints(player.getId(), earned);
+            AtrionExtras.onPvmWin(player, defeated);
             // Defi de donjon reussi : un objet Mythique garanti
             if (challengeWon) {
                 int bossLevel = defeated.stream().filter(g -> g != null && g.getTemplate() != null && g.getTemplate().isBoss())

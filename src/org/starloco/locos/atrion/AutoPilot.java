@@ -48,6 +48,12 @@ public final class AutoPilot {
         }
         return clientMaps;
     }
+    /** true si le client sait afficher cette carte (ou si la liste est absente). */
+    public static boolean isClientMap(int mapId) {
+        Set<Integer> set = clientMaps();
+        return set.isEmpty() || set.contains(mapId);
+    }
+
     private static final ThreadLocal<Boolean> injecting = ThreadLocal.withInitial(() -> false);
 
     private static final class Route {

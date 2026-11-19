@@ -31,6 +31,13 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
                 "ON DUPLICATE KEY UPDATE until_ms = " + until + ";");
     }
 
+    /** Nombre de drapeaux d'un personnage commencant par un prefixe (ex : especes decouvertes). */
+    public int countFlags(int playerId, String prefix) {
+        ensureLoaded();
+        String p = playerId + ":" + prefix;
+        return (int) flags.stream().filter(f -> f.startsWith(p)).count();
+    }
+
     public int points(int playerId) {
         ensureLoaded();
         return points.getOrDefault(playerId, 0);
