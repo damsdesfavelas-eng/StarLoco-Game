@@ -1,6 +1,8 @@
 -- Atrion : Ganymede, gardien du prestige (zaap d'Astrub).
 -- Les textes (nom, questions 99001-99002, reponses 99001-99004) sont ajoutes par le client Atrion.
 local npc = Npc(99001, 50)
+npc.colors = {0xF0F0F0, 0x2F5DA8, 0xD4AF37}
+npc.accessories = {0, 0, 0, 0, 0}
 
 local MAIN = {99001, 99002, 99003}
 
