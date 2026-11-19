@@ -35,7 +35,7 @@ public final class AutoPilot {
     private static final class Route {
         final int playerId;
         final List<int[]> steps; // {carte de depart, cellule de sortie, carte d'arrivee}
-        int index = 0, retries = 0, stuck = 0;
+        int index = 0, retries = 0, stuck = 0, loadWait = 0;
         long waitUntil = 0;
         final int targetX, targetY;
         Route(int playerId, List<int[]> steps, int x, int y) { this.playerId = playerId; this.steps = steps; this.targetX = x; this.targetY = y; }
@@ -66,6 +66,13 @@ public final class AutoPilot {
             }
         }
         return links;
+    }
+
+    /** carte que le client a fini de charger (paquet GI), par personnage */
+    private static final Map<Integer, Integer> loadedMap = new ConcurrentHashMap<>();
+
+    public static void onMapLoaded(Player player) {
+        if (player != null && player.getCurMap() != null) loadedMap.put(player.getId(), player.getCurMap().getId());
     }
 
     /** true pendant que le serveur envoie lui-meme un deplacement (pour ne pas annuler le trajet). */
@@ -202,12 +209,16 @@ public final class AutoPilot {
             route.retries = 0;
             route.stuck = 0;
             route.waitUntil = 0;
+            route.loadWait = 0;
             if (route.index >= route.steps.size()) { stop(route, player, "Tu es arrive en <b>[" + route.targetX + "," + route.targetY + "]</b>."); return; }
-            schedule(route, 1300); // laisse le temps au client de charger la carte
+            schedule(route, 900); // puis attente du chargement de la carte par le client (GI)
             return;
         }
         if (map.getId() != step[0]) { stop(route, player, "Deplacement automatique interrompu."); return; }
         if (player.getExchangeAction() != null) { schedule(route, 1000); return; }
+        // On attend que le client ait fini de charger la carte avant de bouger (sinon erreur de chargement)
+        Integer loaded = loadedMap.get(player.getId());
+        if ((loaded == null || loaded != map.getId()) && route.loadWait++ < 25) { schedule(route, 400); return; }
 
         long now = System.currentTimeMillis();
         if (now < route.waitUntil) { schedule(route, Math.min(500, route.waitUntil - now + 50)); return; }

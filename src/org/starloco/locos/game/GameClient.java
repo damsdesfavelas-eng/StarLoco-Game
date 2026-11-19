@@ -4481,6 +4481,7 @@ public class GameClient {
     }
 
     private void getExtraInformations() {
+        org.starloco.locos.atrion.AutoPilot.onMapLoaded(this.player); // Atrion
         try {
             if (this.player != null && this.player.getLastFight() != null) {
                 if (player.applyEndFightAction()) {
