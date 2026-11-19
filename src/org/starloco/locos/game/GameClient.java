@@ -3841,6 +3841,7 @@ public class GameClient {
 
         switch (actionID) {
             case 1://Deplacement
+                org.starloco.locos.atrion.AutoPilot.onManualMove(this.player); // Atrion
                 final Party party = this.player.getParty();
 
                 GameMap oldMap = this.player.getCurMap();

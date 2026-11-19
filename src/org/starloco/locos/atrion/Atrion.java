@@ -105,32 +105,8 @@ public final class Atrion {
     }
 
     // ------------------------------------------------------------------ Voyage par double-clic sur la carte
-    private static final Map<Integer, Long> lastTravel = new java.util.concurrent.ConcurrentHashMap<>();
-
     public static void travelTo(Player player, int x, int y) {
-        if (player.getFight() != null) { player.sendMessage("Impossible de voyager pendant un combat."); return; }
-        if (player.getExchangeAction() != null) { player.sendMessage("Termine d'abord ton echange ou ton dialogue."); return; }
-        if (player.getCurMap() == null) return;
-        long now = System.currentTimeMillis();
-        Long last = lastTravel.get(player.getId());
-        if (last != null && now - last < 3000) return;
-        int superArea = java.util.Optional.ofNullable(player.getCurMap().getArea()).map(org.starloco.locos.area.Area::getSuperArea).orElse(-1);
-        org.starloco.locos.area.map.GameMap best = null;
-        int bestScore = -1;
-        for (int id : World.world.getMapIdByPosInSuperArea(x, y, superArea)) {
-            if (DungeonTiers.isDungeonMap(id)) continue;
-            org.starloco.locos.area.map.GameMap map = World.world.getMap(id);
-            if (map == null) continue;
-            // On prefere les cartes exterieures (avec placements de combat) a celles des maisons et interieurs
-            int score = (map.getPlaces() != null && !map.getPlaces().isEmpty() ? 2 : 0) + (best == null || id < best.getId() ? 1 : 0);
-            if (score > bestScore) { best = map; bestScore = score; }
-        }
-        if (best == null) { player.sendMessage("Impossible de voyager vers [" + x + "," + y + "]."); return; }
-        if (best.getId() == player.getCurMap().getId()) return;
-        int cell = best.getRandomFreeCellId();
-        if (best.getCase(cell) == null) { player.sendMessage("Impossible de voyager vers [" + x + "," + y + "]."); return; }
-        lastTravel.put(player.getId(), now);
-        player.teleport(best.getId(), cell);
+        AutoPilot.start(player, x, y);
     }
 
     // Trousseau de cles (10207) : toutes les cles de donjon, jamais consommees (cf. Dungeons.lua)
