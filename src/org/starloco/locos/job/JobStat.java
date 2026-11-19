@@ -78,6 +78,7 @@ public class JobStat {
         if(xp<0) throw new IllegalArgumentException("xp must be positive");
         if (this.lvl > 99)
             return;
+        org.starloco.locos.atrion.AtrionMissions.onJobXp(P, xp); // Atrion : missions
         int exLvl = this.lvl;
         this.xp += xp;
 

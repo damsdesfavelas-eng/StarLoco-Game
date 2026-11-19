@@ -70,6 +70,8 @@ public final class AtrionEvents {
     private static volatile GameMap invasionMap;
     private static volatile long invasionAt = 0;
     private static volatile boolean invasionBeaten = false;
+    private static volatile boolean invasionBoss = false;
+    private static final int BOSS_REWARD = 60;
     private static final long bootAt = System.currentTimeMillis();
 
     private static void invasionTick() {
@@ -91,9 +93,16 @@ public final class AtrionEvents {
             }
             return;
         }
+        // Week-end : invasion de boss a 21h30
+        ZonedDateTime z = ZonedDateTime.now(PARIS);
+        boolean weekend = z.getDayOfWeek() == java.time.DayOfWeek.SATURDAY || z.getDayOfWeek() == java.time.DayOfWeek.SUNDAY;
+        if (weekend && z.getHour() == 21 && z.getMinute() >= 30 && data().buffUntil(0, "boss_day") < today()) {
+            data().setBuff(0, "boss_day", today());
+            if (spawnInvasion(true)) return;
+        }
         long last = invasionAt == 0 ? bootAt - INVASION_EVERY_MS + INVASION_FIRST_MS : invasionAt;
         if (now - last < INVASION_EVERY_MS) return;
-        spawnInvasion();
+        spawnInvasion(false);
     }
 
     private static int averageOnlineLevel() {
@@ -104,6 +113,34 @@ public final class AtrionEvents {
 
     /** Lance une invasion (aussi utilisable par un admin : .invasion). */
     public static boolean spawnInvasion() {
+        return spawnInvasion(false);
+    }
+
+    private static Monster pickBoss(int avg, ThreadLocalRandom rng) {
+        List<Monster> bosses = new ArrayList<>();
+        List<Monster> any = new ArrayList<>();
+        java.util.Map<Integer, String> names = names();
+        for (Monster m : World.world.getMonstres()) {
+            if (m == null || !m.isBoss() || m.getGrades().isEmpty() || !names.containsKey(m.getId())) continue;
+            int lvl = m.getGrades().values().stream().mapToInt(MonsterGrade::getLevel).max().orElse(0);
+            if (lvl <= 0) continue;
+            any.add(m);
+            if (Math.abs(lvl - avg) <= 30) bosses.add(m);
+        }
+        List<Monster> pool = bosses.isEmpty() ? any : bosses;
+        return pool.isEmpty() ? null : pool.get(rng.nextInt(pool.size()));
+    }
+
+    private static java.util.Map<Integer, String> names() {
+        try {
+            AtrionGameData gd = DatabaseManager.get(AtrionGameData.class);
+            return gd == null ? java.util.Collections.emptyMap() : gd.monsterNames();
+        } catch (Exception e) {
+            return java.util.Collections.emptyMap();
+        }
+    }
+
+    public static boolean spawnInvasion(boolean boss) {
         int avg = averageOnlineLevel();
         List<GameMap> candidates = new ArrayList<>();
         List<GameMap> fallback = new ArrayList<>();
@@ -127,7 +164,13 @@ public final class AtrionEvents {
             if (templates.isEmpty()) continue;
             List<Monster> list = new ArrayList<>(templates.values());
             StringBuilder data = new StringBuilder();
-            for (int i = 0; i < INVASION_SIZE; i++) {
+            Monster bossMonster = boss ? pickBoss(avg, rng) : null;
+            if (boss && bossMonster == null) return false;
+            if (bossMonster != null) {
+                int bmax = bossMonster.getGrades().values().stream().mapToInt(MonsterGrade::getLevel).max().orElse(1);
+                data.append(bossMonster.getId()).append(',').append(bmax).append(',').append(bmax).append(';');
+            }
+            for (int i = bossMonster != null ? 1 : 0; i < INVASION_SIZE; i++) {
                 Monster m = list.get(rng.nextInt(list.size()));
                 int max = m.getGrades().values().stream().mapToInt(MonsterGrade::getLevel).max().orElse(1);
                 data.append(m.getId()).append(',').append(max).append(',').append(max).append(';');
@@ -142,9 +185,15 @@ public final class AtrionEvents {
             invasionMap = map;
             invasionAt = System.currentTimeMillis();
             invasionBeaten = false;
+            invasionBoss = bossMonster != null;
             String area = "";
             try { if (map.getSubArea() != null && map.getSubArea().getName() != null) area = " (" + map.getSubArea().getName() + ")"; } catch (Exception ignored) { }
             int lvl = group.getMobs().values().stream().mapToInt(MonsterGrade::getLevel).sum();
+            if (bossMonster != null) {
+                broadcast("INVASION DE BOSS ! " + AtrionExtras.monsterName(bossMonster.getId()) + " et son escorte (niveau total " + lvl + ") ont envahi [" + map.getX() + "," + map.getY() + "]" + area
+                        + ". +" + BOSS_REWARD + " pts pour les vainqueurs, " + (INVASION_DURATION_MS / 60_000) + " minutes pour les arreter !", "FF2A2A");
+                return true;
+            }
             broadcast("INVASION ! Un groupe d'elite (niveau total " + lvl + ", bonus d'etoiles maximal) est apparu en [" + map.getX() + "," + map.getY() + "]" + area
                     + ". +" + INVASION_REWARD + " pts pour les vainqueurs. Il repart dans " + (INVASION_DURATION_MS / 60_000) + " minutes. Double-clic sur la carte pour y aller !", "FF5C3C");
             return true;
@@ -157,9 +206,10 @@ public final class AtrionEvents {
         if (group == null || player == null || group != invasionGroup) return;
         boolean first = !invasionBeaten;
         invasionBeaten = true;
-        data().addPoints(player.getId(), INVASION_REWARD);
+        final int reward = invasionBoss ? BOSS_REWARD : INVASION_REWARD;
+        data().addPoints(player.getId(), reward);
         AtrionAchievements.increment(player, "c_inv");
-        org.starloco.locos.util.TimerWaiter.addNext(() -> player.sendMessage("<b>Invasion repoussee</b> : +" + INVASION_REWARD + " points de boutique."), 2000);
+        org.starloco.locos.util.TimerWaiter.addNext(() -> player.sendMessage("<b>Invasion repoussee</b> : +" + reward + " points de boutique."), 2000);
         if (first) broadcast(player.getName() + " et son equipe ont repousse l'invasion ! Prochaine invasion dans environ "
                 + (INVASION_EVERY_MS / 60_000) + " minutes.", "FFB43C");
         AtrionAchievements.check(player);
@@ -465,5 +515,20 @@ public final class AtrionEvents {
         DatabaseManager.get(org.starloco.locos.database.data.login.PlayerData.class).update(player);
         player.sendMessage("+" + n + " " + chosen[0] + " parchottee (" + (current + n) + "/" + PARCHO_MAX + ", -" + (n * PARCHO_COST) + " pts, reste " + data().points(player.getId()) + ").");
         return true;
+    }
+
+    /** Resume des evenements pour le launcher (texte simple, une ligne par evenement). */
+    public static String publicStatus() {
+        List<String> lines = new ArrayList<>();
+        String inv = invasionStatus();
+        if (!inv.isEmpty()) lines.add(inv);
+        String[] q = currentQuestion;
+        if (q != null) lines.add("Quiz en cours : " + q[0]);
+        if (LOTTERY) {
+            String l = lotteryInfo(null).replaceAll("<[^>]+>", "");
+            int cut = l.indexOf(" Tes tickets");
+            lines.add(cut > 0 ? l.substring(0, cut) : l);
+        }
+        return String.join("\n", lines);
     }
 }

@@ -31,6 +31,18 @@ public class PrestigeData extends FunctionDAO<PrestigeData> {
                 "ON DUPLICATE KEY UPDATE until_ms = " + until + ";");
     }
 
+    private volatile boolean statusTable = false;
+
+    /** Etat public du serveur (lu par la page atrion-status.php du site, affichee dans le launcher). */
+    public void setStatus(String key, String value) {
+        if (!statusTable) {
+            execute("CREATE TABLE IF NOT EXISTS `atrion_status` (`k` VARCHAR(32) NOT NULL PRIMARY KEY, `v` TEXT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+            statusTable = true;
+        }
+        String v = value == null ? "" : value.replace("\\", "").replace("'", "''");
+        execute("INSERT INTO `atrion_status` (k, v) VALUES ('" + key.replace("'", "") + "', '" + v + "') ON DUPLICATE KEY UPDATE v = '" + v + "';");
+    }
+
     /** Nombre de drapeaux d'un personnage commencant par un prefixe (ex : especes decouvertes). */
     public int countFlags(int playerId, String prefix) {
         ensureLoaded();

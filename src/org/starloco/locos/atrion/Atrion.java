@@ -337,6 +337,11 @@ public final class Atrion {
                 if (player.getGroup() == null) return false; // admin : lancer une invasion
                 player.sendMessage(AtrionEvents.spawnInvasion() ? "Invasion lancee." : "Aucune carte trouvee pour l'invasion.");
                 return true;
+            case ".missions":
+            case ".mission":
+                return AtrionMissions.commandMissions(player);
+            case ".semaine":
+                return AtrionMissions.commandWeekly(player);
             case ".profil":
             case ".moi":
                 return AtrionExtras.commandProfile(player);
@@ -353,7 +358,7 @@ public final class Atrion {
                         + "<br/>- Progression : .prestige, .palier, .restat, .top"
                         + "<br/>- Butin : .drops &lt;monstre ou objet&gt;, .recycler, .ameliorer, .craft &lt;metier&gt;, .hdv"
                         + "<br/>- Boutique : .points, .boutique, .acheter, .bonus"
-                        + "<br/>- Quotidien : .chasse, .quotidien, .profil, .succes"
+                        + "<br/>- Quotidien : .missions, .chasse, .quotidien, .profil, .succes, .semaine"
                         + "<br/>- Evenements : .r &lt;reponse&gt; (quiz), .tombola, .infos"
                         + "<br/>- Divers : .vie, .parcho, .classement"
                         + "<br/>- StarLoco : .maitre (ton groupe suit le chef), .deblo, .all, .groupe, .transfert, .savepos, .start");
@@ -1009,6 +1014,7 @@ public final class Atrion {
             player.addItem(item, true);
             World.world.addGameObject(item);
             player.sendMessage(prefix + template.getName() + " " + rarity.mark() + " (niv. " + template.getLevel() + ")");
+            AtrionMissions.announceLoot(player, template.getName(), rarity);
             DatabaseManager.get(PlayerData.class).update(player);
         }, 2000);
     }
@@ -1079,6 +1085,7 @@ public final class Atrion {
                 World.world.addGameObject(item);
                 player.sendMessage("<b>Butin</b> : " + template.getName()
                         + (rarity == Rarity.NORMAL ? "" : " " + rarity.mark()) + " (niv. " + template.getLevel() + ")");
+                AtrionMissions.announceLoot(player, template.getName(), rarity);
             }
             DatabaseManager.get(PlayerData.class).update(player);
         }, 1500);

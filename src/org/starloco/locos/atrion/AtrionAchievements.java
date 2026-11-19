@@ -48,6 +48,8 @@ public final class AtrionAchievements {
             new Ach("quiz1", "Erudit", "Gagner un quiz", Kind.COUNTER, "c_quiz", 1, 10),
             new Ach("quiz25", "Puits de science", "Gagner 25 quiz", Kind.COUNTER, "c_quiz", 25, 80),
             new Ach("lotto1", "Main chanceuse", "Gagner la tombola", Kind.COUNTER, "c_lotto", 1, 20),
+            new Ach("mis10", "Homme de mission", "Accomplir 10 missions quotidiennes", Kind.COUNTER, "c_mis", 10, 20),
+            new Ach("mis100", "Infatigable", "Accomplir 100 missions quotidiennes", Kind.COUNTER, "c_mis", 100, 120),
             new Ach("fights100", "Combattant", "Gagner 100 combats", Kind.COUNTER, "c_win", 100, 20),
             new Ach("fights1000", "Machine de guerre", "Gagner 1000 combats", Kind.COUNTER, "c_win", 1000, 100),
     };

@@ -204,7 +204,7 @@ public final class AtrionExtras {
         }
     }
 
-    private static String monsterName(int id) {
+    static String monsterName(int id) {
         String n = names().get(id);
         return n == null ? "monstre #" + id : n;
     }
@@ -383,8 +383,10 @@ public final class AtrionExtras {
     }
 
     private static void tick() {
+        try { publishStatus(); } catch (Throwable t) { World.world.logger.error("Atrion: etat public", t); }
         if (World.world.getOnlinePlayers().isEmpty()) return;
         AtrionEvents.tick();
+        try { AtrionMissions.tick(); } catch (Throwable t) { World.world.logger.error("Atrion: semaine", t); }
         boolean happy = isHappyHour();
         if (happy != lastHappy) {
             lastHappy = happy;
@@ -396,5 +398,24 @@ public final class AtrionExtras {
             lastTip = System.currentTimeMillis();
             SocketManager.GAME_SEND_MESSAGE_TO_ALL("Astuce : " + TIPS_LIST[tipIndex++ % TIPS_LIST.length], "9BD3FF");
         }
+    }
+
+    /** Publie l'etat du serveur dans la base (page atrion-status.php -> launcher). */
+    private static void publishStatus() {
+        PrestigeData d = data();
+        d.setStatus("online", String.valueOf(World.world.getOnlinePlayers().size()));
+        d.setStatus("bonus", bonusLine().replaceAll("<[^>]+>", ""));
+        d.setStatus("events", AtrionEvents.publicStatus());
+        StringBuilder hunt = new StringBuilder();
+        try {
+            ensureHunt();
+            for (int b = 0; b < BANDS.length; b++) {
+                if (huntTargets[b] < 0) continue;
+                if (hunt.length() > 0) hunt.append(", ");
+                hunt.append(monsterName(huntTargets[b]));
+            }
+        } catch (Exception ignored) { }
+        d.setStatus("hunt", hunt.toString());
+        d.setStatus("updated", String.valueOf(System.currentTimeMillis()));
     }
 }

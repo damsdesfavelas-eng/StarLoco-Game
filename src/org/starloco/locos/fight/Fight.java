@@ -4824,6 +4824,8 @@ public class Fight {
                         xpPlayer = FormuleOfficiel.getXp(i, winners, totalXP, nbbonus, getMobGroup() != null ? getMobGroup().getStarBonus() : 0, challXp, lvlMax, lvlMin, lvlLoosers, lvlWinners);
                         xpPlayer = org.starloco.locos.atrion.DungeonTiers.scaleXp(xpPlayer, this.atrionTier); // Atrion
                         xpPlayer = (long) (xpPlayer * org.starloco.locos.atrion.Atrion.xpMultiplier(player)); // Atrion : potion XP x2
+                        if (getType() == Constant.FIGHT_TYPE_PVM) // Atrion : bonus d'XP en groupe
+                            xpPlayer = (long) (xpPlayer * org.starloco.locos.atrion.AtrionMissions.groupXpFactor((int) winners.stream().filter(f -> f.getPlayer() != null && !f.isInvocation() && !(f instanceof CloneFighter)).count()));
                         XP.set(xpPlayer);
 
                         if (this.getType() == Constant.FIGHT_TYPE_PVT && win == 1) {
@@ -5002,6 +5004,10 @@ public class Fight {
                         // Atrion : invasion
                         if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
                             org.starloco.locos.atrion.AtrionEvents.onGroupDefeated(this.monsterGroup, player);
+                        // Atrion : missions, semaine, premieres
+                        if (player != null && this.getType() == Constant.FIGHT_TYPE_PVM && this.monsterGroup != null && win == 1)
+                            org.starloco.locos.atrion.AtrionMissions.onPvmWin(player, this.monsterGroup.getMobs().values(),
+                                    (int) winners.stream().filter(f -> f.getPlayer() != null && !f.isInvocation() && !(f instanceof CloneFighter)).count());
                         /** Drop Chasseur **/
                         if (player != null) {
                             ArrayList<Drop> temporary = new ArrayList<>(dropsMeats);
